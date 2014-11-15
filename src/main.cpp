@@ -79,6 +79,9 @@ class mesh_3D: public object_3D     /**< 3D object made of triangles */
       void set_texture(t_color_buffer *texture);
       t_color_buffer *get_texture();
       bool load_obj(string filename);
+      void translate(double x, double y, double z);
+      void rotate(double around_x, double around_y, double around_z);
+      void scale(double x, double y, double z);
       void print();
   };
 
@@ -168,6 +171,56 @@ mesh_3D::mesh_3D()
     this->texture = 0;
   }
 
+void mesh_3D::translate(double x, double y, double z)
+  {
+    unsigned int i;
+
+    for (i = 0; i < this->vertices.size(); i++)
+      {
+        this->vertices[i].position.x += x;
+        this->vertices[i].position.y += y;
+        this->vertices[i].position.z += z;
+      }
+  }
+
+void mesh_3D::rotate(double around_x, double around_y, double around_z)
+  {
+    unsigned int i;
+    double x,y,z;
+
+    for (i = 0; i < this->vertices.size(); i++)
+      {
+        x = this->vertices[i].position.x;
+        y = this->vertices[i].position.y;
+        z = this->vertices[i].position.z;
+
+        x = x * cos(around_z) - y * sin(around_z);
+        y = x * sin(around_z) + y * cos(around_z);
+
+        y = y * cos(around_x) - z * sin(around_x);
+        z = y * sin(around_x) + z * cos(around_x);
+
+        x = x * cos(around_y) - z * sin(around_y);
+        z = x * sin(around_y) + z * cos(around_y);
+
+        this->vertices[i].position.x = x;
+        this->vertices[i].position.y = y;
+        this->vertices[i].position.z = z;
+      }
+  }
+
+void mesh_3D::scale(double x, double y, double z)
+  {
+    unsigned int i;
+
+    for (i = 0; i < this->vertices.size(); i++)
+      {
+        this->vertices[i].position.x *= x;
+        this->vertices[i].position.y *= y;
+        this->vertices[i].position.z *= z;
+      }
+  }
+
 void mesh_3D::set_texture(t_color_buffer *texture)
   {
     this->texture = texture;
@@ -185,7 +238,7 @@ scene_3D::scene_3D()
     this->camera_position.x = 0;
     this->camera_position.y = 0;
     this->camera_position.z = 0;
-    this->focal_distance = 1.0;
+    this->focal_distance = 0.5;
   }
 
 void print_point(point_3D point)
@@ -473,17 +526,20 @@ void scene_3D::render(t_color_buffer *buffer)
     triangle_3D triangle;
     double barycentric_a, barycentric_b, barycentric_c;
     double *texture_coords_a, *texture_coords_b, *texture_coords_c;
+    double aspect_ratio;
 
-    for (j = 0; j < this->resolution[0]; j++)
+    aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
+
+    for (j = 0; j < this->resolution[1]; j++)
       for (i = 0; i < this->resolution[0]; i++)
         {
           point1.x = 0;
-          point1.y = 0;
+          point1.y = -this->focal_distance;
           point1.z = 0;
 
           point2.x = i / ((double) this->resolution[0]) - 0.5;
-          point2.y = 1;
-          point2.z = -1 * (j / ((double) this->resolution[1]) - 0.5);
+          point2.y = 0;
+          point2.z = -1 * aspect_ratio * (j / ((double) this->resolution[1]) - 0.5);
 
           line_3D line(point1,point2);
 
@@ -710,7 +766,7 @@ bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, do
 
     // if one of the vectors points in other direction than the others, the point is not inside the triangle:
 
-    if (dot_product(normal1,normal2) < 0 || dot_product(normal2,normal3) < 0)
+    if (dot_product(normal1,normal2) <= 0 || dot_product(normal2,normal3) <= 0)
       return false;
 
     // now compute the barycentric coordinates:
@@ -791,6 +847,9 @@ int main(void)
     mesh.triangle_indices.push_back(1);
     mesh.triangle_indices.push_back(3);
 */
+
+    mesh.rotate(PI / 5.0,0,0);
+    mesh.translate(0,4,0);
     scene.add_mesh(&mesh);
 
     scene.render(&buffer);
