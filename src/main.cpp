@@ -92,31 +92,6 @@ class mesh_3D: public object_3D     /**< 3D object made of triangles */
       void print();
   };
 
-class scene_3D         /**< 3D scene with 3D objects, lights and rendering info */
-  {
-    protected:
-      vector<mesh_3D *> meshes;
-      vector<light_3D *> lights;
-      point_3D camera_position;
-      double focal_distance;
-      unsigned int resolution[2];   /**< final picture resolution */
-
-    public:
-      scene_3D();
-
-      void render(t_color_buffer *buffer);
-
-      /**<
-       Renders the set up scene into given color buffer.
-
-       @param buffer buffer to render the scene to, it must not be
-              initialised
-       */
-
-      void add_mesh(mesh_3D *mesh);
-      void add_light(light_3D *light);
-  };
-
 class line_3D
   {
     protected:
@@ -173,6 +148,57 @@ class line_3D
                  intersection will be returned;
           @return true if the triangle is intersected by the line
          */
+  };
+
+class scene_3D         /**< 3D scene with 3D objects, lights and rendering info */
+  {
+    protected:
+      vector<mesh_3D *> meshes;
+      vector<light_3D *> lights;
+      point_3D camera_position;
+      double focal_distance;
+      unsigned int resolution[2];   /**< final picture resolution */
+
+      bool cast_shadow_ray(line_3D line, light_3D light);
+
+      /**<
+       Cast a shadow ray to given light and checks if the point the
+       ray was casted from is vidible (lit) by the light.
+
+       @param line line representing the ray
+       @param light light to be checked
+       @return true if the ray hits the light without hitting any
+               other object in the scene, false otherwise
+       */
+
+      void cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsigned char &b, unsigned int recursion_depth);
+
+      /**<
+       Casts a ray and gets the color it hits (it is recursively
+       computed by casting secondary rays)
+
+       @param line line representing the ray
+       @param r in this variable the amount of final red will be returned
+       @param g in this variable the amount of final green will be returned
+       @param b in this variable the amount of final blue will be returned
+       @param recursion depth depth of recursion, 0 means no secondary
+              ray will be cast
+       */
+
+    public:
+      scene_3D();
+
+      void render(t_color_buffer *buffer);
+
+      /**<
+       Renders the set up scene into given color buffer.
+
+       @param buffer buffer to render the scene to, it must not be
+              initialised
+       */
+
+      void add_mesh(mesh_3D *mesh);
+      void add_light(light_3D *light);
   };
 
 mesh_3D::mesh_3D()
@@ -557,18 +583,79 @@ double point_distance(point_3D a, point_3D b)
     return sqrt(difference.x * difference.x + difference.y * difference.y + difference.z * difference.z);
   }
 
+bool scene_3D::cast_shadow_ray(line_3D line, light_3D light)
+  {
+    return true;
+  }
+
+void scene_3D::cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsigned char &b, unsigned int recursion_depth)
+  {
+    unsigned int k, l;
+    triangle_3D triangle;
+    double depth, t;
+    double *texture_coords_a, *texture_coords_b, *texture_coords_c;
+    double barycentric_a, barycentric_b, barycentric_c;
+    point_3D starting_point;
+
+    line.get_point(0,starting_point);
+
+    depth = 99999999;
+
+    r = 255;
+    g = 255;
+    b = 255;
+
+    for (k = 0; k < this->meshes.size(); k++)
+      {
+        for (l = 0; l < this->meshes[k]->triangle_indices.size(); l += 3)
+          {
+            triangle.a = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l]].position;
+            triangle.b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].position;
+            triangle.c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].position;
+
+            texture_coords_a = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l]].texture_coords;
+            texture_coords_b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].texture_coords;
+            texture_coords_c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].texture_coords;
+
+            if (line.intersects_triangle(triangle,barycentric_a,barycentric_b,barycentric_c,t))
+              {
+                point_3D intersection;
+                line.get_point(t,intersection);
+                double distance = point_distance(starting_point,intersection);
+
+                if (distance < depth)  // depth test
+                  {
+                    depth = distance;
+
+                    if (this->meshes[k]->get_texture() != 0)
+                      {
+                        double u,v;
+
+                        u = barycentric_a * texture_coords_a[0] + barycentric_b * texture_coords_b[0] + barycentric_c * texture_coords_c[0];
+                        v = barycentric_a * texture_coords_a[1] + barycentric_b * texture_coords_b[1] + barycentric_c * texture_coords_c[1];
+
+                        color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&r,&g,&b);
+                      }
+                    else
+                      {
+                        r = 255;
+                        g = 255;
+                        b = 0;
+                      }
+                  }
+                }
+              }
+            }
+  }
+
 void scene_3D::render(t_color_buffer *buffer)
   {
     color_buffer_init(buffer,this->resolution[0],this->resolution[1]);
 
-    unsigned int i,j,k,l;
+    unsigned int i,j;
     point_3D point1, point2;
-    triangle_3D triangle;
-    double barycentric_a, barycentric_b, barycentric_c;
-    double *texture_coords_a, *texture_coords_b, *texture_coords_c;
     double aspect_ratio;
-    double depth;
-    double t;
+    unsigned char r,g,b;
 
     aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
 
@@ -585,50 +672,9 @@ void scene_3D::render(t_color_buffer *buffer)
 
           line_3D line(point1,point2);
 
-          depth = 99999999;
+          this->cast_ray(line,r,g,b,0);
 
-          for (k = 0; k < this->meshes.size(); k++)
-            {
-              for (l = 0; l < this->meshes[k]->triangle_indices.size(); l += 3)
-                {
-                  triangle.a = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l]].position;
-                  triangle.b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].position;
-                  triangle.c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].position;
-
-                  texture_coords_a = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l]].texture_coords;
-                  texture_coords_b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].texture_coords;
-                  texture_coords_c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].texture_coords;
-
-                  if (line.intersects_triangle(triangle,barycentric_a,barycentric_b,barycentric_c,t))
-                    {
-                      point_3D intersection;
-                      line.get_point(t,intersection);
-                      double distance = point_distance(point1,intersection);
-
-                      if (distance < depth)  // depth test
-                        {
-                          depth = distance;
-
-                          if (this->meshes[k]->get_texture() != 0)
-                            {
-                              unsigned char r,g,b;
-                              double u,v;
-
-                              u = barycentric_a * texture_coords_a[0] + barycentric_b * texture_coords_b[0] + barycentric_c * texture_coords_c[0];
-                              v = barycentric_a * texture_coords_a[1] + barycentric_b * texture_coords_b[1] + barycentric_c * texture_coords_c[1];
-
-                              color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&r,&g,&b);
-
-                              //color_buffer_set_pixel(buffer,i,j,barycentric_a * 255,barycentric_b * 255,barycentric_c * 255);
-
-                              color_buffer_set_pixel(buffer,i,j,r,g,b);
-                            }
-                          else
-                            color_buffer_set_pixel(buffer,i,j,255,0,0);
-                        }
-                    }
-                }
-            }
+          color_buffer_set_pixel(buffer,i,j,r,g,b);
         }
   }
 
