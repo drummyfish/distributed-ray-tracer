@@ -22,6 +22,13 @@ extern "C"
 #include "colorbuffer.h"
 }
 
+typedef enum
+  {
+    AROUND_X,
+    AROUND_Y,
+    AROUND_Z
+  } rotation_type;
+
 typedef struct          /**< point, also a vector */
   {
     double x;
@@ -80,7 +87,7 @@ class mesh_3D: public object_3D     /**< 3D object made of triangles */
       t_color_buffer *get_texture();
       bool load_obj(string filename);
       void translate(double x, double y, double z);
-      void rotate(double around_x, double around_y, double around_z);
+      void rotate(double angle, rotation_type type);
       void scale(double x, double y, double z);
       void print();
   };
@@ -146,7 +153,7 @@ class line_3D
           @param point in this variable the line point will be returned
          */
 
-      bool intersects_triangle(triangle_3D triangle, double &a, double &b, double &c);
+      bool intersects_triangle(triangle_3D triangle, double &a, double &b, double &c, double &t);
 
         /**<
           Checks whether the line intersects given triangle plus
@@ -162,6 +169,8 @@ class line_3D
           @param c in this variable the third coordination of the
                  barycentric coordinations of the intersection will
                  be returned
+          @param t in this variable a parameter value of the
+                 intersection will be returned;
           @return true if the triangle is intersected by the line
          */
   };
@@ -183,10 +192,11 @@ void mesh_3D::translate(double x, double y, double z)
       }
   }
 
-void mesh_3D::rotate(double around_x, double around_y, double around_z)
+void mesh_3D::rotate(double angle, rotation_type type)
   {
     unsigned int i;
     double x,y,z;
+    double x2,y2,z2;
 
     for (i = 0; i < this->vertices.size(); i++)
       {
@@ -194,18 +204,32 @@ void mesh_3D::rotate(double around_x, double around_y, double around_z)
         y = this->vertices[i].position.y;
         z = this->vertices[i].position.z;
 
-        x = x * cos(around_z) - y * sin(around_z);
-        y = x * sin(around_z) + y * cos(around_z);
+        switch (type)
+          {
+            case AROUND_Z:
+              x2 = x * cos(angle) - y * sin(angle);
+              y2 = x * sin(angle) + y * cos(angle);
+              z2 = z;
+              break;
 
-        y = y * cos(around_x) - z * sin(around_x);
-        z = y * sin(around_x) + z * cos(around_x);
+            case AROUND_X:
+              y2 = y * cos(angle) - z * sin(angle);
+              z2 = y * sin(angle) + z * cos(angle);
+              x2 = x;
+              break;
 
-        x = x * cos(around_y) - z * sin(around_y);
-        z = x * sin(around_y) + z * cos(around_y);
+            case AROUND_Y:
+              x2 = x * cos(angle) - z * sin(angle);
+              z2 = x * sin(angle) + z * cos(angle);
+              y2 = y;
+              break;
 
-        this->vertices[i].position.x = x;
-        this->vertices[i].position.y = y;
-        this->vertices[i].position.z = z;
+            default: break;
+          }
+
+        this->vertices[i].position.x = x2;
+        this->vertices[i].position.y = y2;
+        this->vertices[i].position.z = z2;
       }
   }
 
@@ -312,6 +336,13 @@ double string_to_double(string what, size_t *end_position)
       }
 
     return negative ? -1 * result : result;
+  }
+
+void substract_vectors(point_3D vector1, point_3D vector2, point_3D &final_vector)
+  {
+    final_vector.x = vector2.x - vector1.x;
+    final_vector.y = vector2.y - vector1.y;
+    final_vector.z = vector2.z - vector1.z;
   }
 
 void parse_obj_line(string line,float data[4][3])
@@ -517,6 +548,15 @@ void mesh_3D::print()
       }
   }
 
+double point_distance(point_3D a, point_3D b)
+  {
+    point_3D difference;
+
+    substract_vectors(a,b,difference);
+
+    return sqrt(difference.x * difference.x + difference.y * difference.y + difference.z * difference.z);
+  }
+
 void scene_3D::render(t_color_buffer *buffer)
   {
     color_buffer_init(buffer,this->resolution[0],this->resolution[1]);
@@ -527,6 +567,8 @@ void scene_3D::render(t_color_buffer *buffer)
     double barycentric_a, barycentric_b, barycentric_c;
     double *texture_coords_a, *texture_coords_b, *texture_coords_c;
     double aspect_ratio;
+    double depth;
+    double t;
 
     aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
 
@@ -543,6 +585,8 @@ void scene_3D::render(t_color_buffer *buffer)
 
           line_3D line(point1,point2);
 
+          depth = 99999999;
+
           for (k = 0; k < this->meshes.size(); k++)
             {
               for (l = 0; l < this->meshes[k]->triangle_indices.size(); l += 3)
@@ -555,23 +599,34 @@ void scene_3D::render(t_color_buffer *buffer)
                   texture_coords_b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].texture_coords;
                   texture_coords_c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].texture_coords;
 
-                  if (line.intersects_triangle(triangle,barycentric_a,barycentric_b,barycentric_c))
-                    if (this->meshes[k]->get_texture() != 0)
-                      {
-                        unsigned char r,g,b;
-                        double u,v;
+                  if (line.intersects_triangle(triangle,barycentric_a,barycentric_b,barycentric_c,t))
+                    {
+                      point_3D intersection;
+                      line.get_point(t,intersection);
+                      double distance = point_distance(point1,intersection);
 
-                        u = barycentric_a * texture_coords_a[0] + barycentric_b * texture_coords_b[0] + barycentric_c * texture_coords_c[0];
-                        v = barycentric_a * texture_coords_a[1] + barycentric_b * texture_coords_b[1] + barycentric_c * texture_coords_c[1];
+                      if (distance < depth)  // depth test
+                        {
+                          depth = distance;
 
-                        color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&r,&g,&b);
+                          if (this->meshes[k]->get_texture() != 0)
+                            {
+                              unsigned char r,g,b;
+                              double u,v;
 
-                        //color_buffer_set_pixel(buffer,i,j,barycentric_a * 255,barycentric_b * 255,barycentric_c * 255);
+                              u = barycentric_a * texture_coords_a[0] + barycentric_b * texture_coords_b[0] + barycentric_c * texture_coords_c[0];
+                              v = barycentric_a * texture_coords_a[1] + barycentric_b * texture_coords_b[1] + barycentric_c * texture_coords_c[1];
 
-                        color_buffer_set_pixel(buffer,i,j,r,g,b);
-                      }
-                    else
-                      color_buffer_set_pixel(buffer,i,j,255,0,0);
+                              color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&r,&g,&b);
+
+                              //color_buffer_set_pixel(buffer,i,j,barycentric_a * 255,barycentric_b * 255,barycentric_c * 255);
+
+                              color_buffer_set_pixel(buffer,i,j,r,g,b);
+                            }
+                          else
+                            color_buffer_set_pixel(buffer,i,j,255,0,0);
+                        }
+                    }
                 }
             }
         }
@@ -594,22 +649,6 @@ void cross_product(point_3D vector1, point_3D vector2, point_3D &final_vector)
     final_vector.x = vector1.y * vector2.z - vector1.z * vector2.y;
     final_vector.y = vector1.z * vector2.x - vector1.x * vector2.z;
     final_vector.z = vector1.x * vector2.y - vector1.y * vector2.x;
-  }
-
-void substract_vectors(point_3D vector1, point_3D vector2, point_3D &final_vector)
-  {
-    final_vector.x = vector2.x - vector1.x;
-    final_vector.y = vector2.y - vector1.y;
-    final_vector.z = vector2.z - vector1.z;
-  }
-
-double point_distance(point_3D a, point_3D b)
-  {
-    point_3D difference;
-
-    substract_vectors(a,b,difference);
-
-    return sqrt(difference.x * difference.x + difference.y * difference.y + difference.z * difference.z);
   }
 
 double vector_length(point_3D vector)
@@ -685,7 +724,7 @@ double triangle_area(triangle_3D triangle)
     return 1/2.0 * a_length * b_length * sin(gamma);
   }
 
-bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, double &c)
+bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, double &c, double &t)
   {
     point_3D vector1,vector2,vector3,normal;
     point_3D center;
@@ -736,7 +775,7 @@ bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, do
     if (denominator == 0)
       return false;
 
-    double t = (-qa * this->c0 - qb * this->c1 - qc * this->c2 - d) / denominator;
+    t = (-qa * this->c0 - qb * this->c1 - qc * this->c2 - d) / denominator;
 
     /* t now contains parameter value for the intersection */
 
@@ -848,8 +887,13 @@ int main(void)
     mesh.triangle_indices.push_back(3);
 */
 
-    mesh.rotate(PI / 5.0,0,0);
-    mesh.translate(0,4,0);
+    mesh.rotate((PI / 6) * 5,AROUND_X);
+    mesh.rotate((PI / 6) * 5,AROUND_Y);
+
+    mesh.translate(2,4,0);
+
+    mesh.print();
+
     scene.add_mesh(&mesh);
 
     scene.render(&buffer);
