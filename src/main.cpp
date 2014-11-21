@@ -58,31 +58,42 @@ typedef struct
     unsigned char alpha;
   } color;
 
-class object_3D
+typedef struct
   {
-     protected:
-       point_3D position;           /**< translation */
+    double ambient_intensity;
+    double diffuse_intensity;
+    double specular_intensity;
+    double specular_exponent;
+    double reflection;
+    double transparency;
+    double refractive_index;
+    color surface_color;
+  } material;
 
-     public:
-       object_3D();
+class light_3D                      /**< light in 3D */
+  {
+    protected:
+      point_3D position;
+      double intensity;
+      color light_color;
+
+    public:
+      light_3D();
+      point_3D get_position();
   };
 
-class light_3D: public object_3D    /**< light in 3D */
-  {
-    double intensity;
-    color light_color;
-  };
-
-class mesh_3D: public object_3D     /**< 3D object made of triangles */
+class mesh_3D                       /**< 3D object made of triangles */
   {
     protected:
       t_color_buffer *texture;
+       material mat;
 
     public:
       vector<vertex_3D> vertices;
       vector<unsigned int> triangle_indices;
 
       mesh_3D();
+      material get_material();
       void set_texture(t_color_buffer *texture);
       t_color_buffer *get_texture();
       bool load_obj(string filename);
@@ -171,18 +182,30 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
                other object in the scene, false otherwise
        */
 
-      void cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsigned char &b, unsigned int recursion_depth);
+      color compute_lighting(point_3D position, material surface_material, point_3D surface_normal);
+
+      /**<
+       Computes the lighting for given point and material in the scene
+       taken all lights in the scene into account, the shadow rays are
+       also casted.
+
+       @param position position in the scene where to compute the
+              lighting
+       @param surface_material material to compute the lighting for
+       @param surface_normal surface normal
+       @return the computed color
+       */
+
+      color cast_ray(line_3D line, unsigned int recursion_depth);
 
       /**<
        Casts a ray and gets the color it hits (it is recursively
        computed by casting secondary rays)
 
        @param line line representing the ray
-       @param r in this variable the amount of final red will be returned
-       @param g in this variable the amount of final green will be returned
-       @param b in this variable the amount of final blue will be returned
        @param recursion depth depth of recursion, 0 means no secondary
               ray will be cast
+       @return computed color
        */
 
     public:
@@ -204,6 +227,83 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
 mesh_3D::mesh_3D()
   {
     this->texture = 0;
+
+    this->mat.surface_color.red = 200;
+    this->mat.surface_color.green = 200;
+    this->mat.surface_color.blue = 200;
+    this->mat.surface_color.alpha = 255;
+    this->mat.ambient_intensity = 0.3;
+    this->mat.diffuse_intensity = 0.5;
+    this->mat.specular_intensity = 0.4;
+    this->mat.specular_exponent = 2.0;
+    this->mat.reflection = 0.7;
+    this->mat.refractive_index = 1.2;
+    this->mat.transparency = 0;
+  }
+
+material mesh_3D::get_material()
+  {
+    return this->mat;
+  }
+
+int saturate_int(int value, int min, int max)
+  {
+    if (value > max)
+      return max;
+
+    if (value < min)
+      return min;
+
+    return value;
+  }
+
+void substract_vectors(point_3D vector1, point_3D vector2, point_3D &final_vector)
+  {
+    final_vector.x = vector2.x - vector1.x;
+    final_vector.y = vector2.y - vector1.y;
+    final_vector.z = vector2.z - vector1.z;
+  }
+
+void print_point(point_3D point)
+  {
+    cout << "(" << point.x << ", " << point.y << ", " << point.z << ")" << endl;
+  }
+
+double vector_length(point_3D vector)
+  {
+    return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+  }
+
+void normalize(point_3D &vector)
+  {
+    double length = vector_length(vector);
+
+    vector.x /= length;
+    vector.y /= length;
+    vector.z /= length;
+  }
+
+color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
+
+  {
+    unsigned int i;
+    point_3D vector_to_light;
+    color final_color;
+
+    final_color.red = surface_material.ambient_intensity * surface_material.surface_color.red;
+    final_color.green = surface_material.ambient_intensity * surface_material.surface_color.green;
+    final_color.blue = surface_material.ambient_intensity * surface_material.surface_color.blue;
+
+    for (i = 0; i < this->lights.size(); i++)
+      {
+        substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
+      }
+
+    normalize(vector_to_light);
+
+    print_point(vector_to_light);
+
+    return final_color;
   }
 
 void mesh_3D::translate(double x, double y, double z)
@@ -216,6 +316,11 @@ void mesh_3D::translate(double x, double y, double z)
         this->vertices[i].position.y += y;
         this->vertices[i].position.z += z;
       }
+  }
+
+point_3D light_3D::get_position()
+  {
+    return this->position;
   }
 
 void mesh_3D::rotate(double angle, rotation_type type)
@@ -288,12 +393,7 @@ scene_3D::scene_3D()
     this->camera_position.x = 0;
     this->camera_position.y = 0;
     this->camera_position.z = 0;
-    this->focal_distance = 0.5;
-  }
-
-void print_point(point_3D point)
-  {
-    cout << "(" << point.x << ", " << point.y << ", " << point.z << ")" << endl;
+    this->focal_distance = 0.25;
   }
 
 double string_to_double(string what, size_t *end_position)
@@ -362,13 +462,6 @@ double string_to_double(string what, size_t *end_position)
       }
 
     return negative ? -1 * result : result;
-  }
-
-void substract_vectors(point_3D vector1, point_3D vector2, point_3D &final_vector)
-  {
-    final_vector.x = vector2.x - vector1.x;
-    final_vector.y = vector2.y - vector1.y;
-    final_vector.z = vector2.z - vector1.z;
   }
 
 void parse_obj_line(string line,float data[4][3])
@@ -588,22 +681,33 @@ bool scene_3D::cast_shadow_ray(line_3D line, light_3D light)
     return true;
   }
 
-void scene_3D::cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsigned char &b, unsigned int recursion_depth)
+color multiply_colors(color color1, color color2)
+  {
+    color final_color;
+
+    final_color.red = (color1.red / 255.0 * color2.red / 255.0) * 255;
+    final_color.green = (color1.green / 255.0 * color2.green / 255.0) * 255;
+    final_color.blue = (color1.blue / 255.0 * color2.blue / 255.0) * 255;
+  }
+
+color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
   {
     unsigned int k, l;
     triangle_3D triangle;
+    color final_color, helper_color;
     double depth, t;
     double *texture_coords_a, *texture_coords_b, *texture_coords_c;
     double barycentric_a, barycentric_b, barycentric_c;
     point_3D starting_point;
+    point_3D normal;
 
     line.get_point(0,starting_point);
 
     depth = 99999999;
 
-    r = 255;
-    g = 255;
-    b = 255;
+    final_color.red = 255;
+    final_color.green = 255;
+    final_color.blue = 255;
 
     for (k = 0; k < this->meshes.size(); k++)
       {
@@ -627,6 +731,10 @@ void scene_3D::cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsign
                   {
                     depth = distance;
 
+                    normal.x = 0;
+                    normal.y = 0;
+                    normal.z = 0;
+
                     if (this->meshes[k]->get_texture() != 0)
                       {
                         double u,v;
@@ -634,18 +742,24 @@ void scene_3D::cast_ray(line_3D line, unsigned char &r, unsigned char &g, unsign
                         u = barycentric_a * texture_coords_a[0] + barycentric_b * texture_coords_b[0] + barycentric_c * texture_coords_c[0];
                         v = barycentric_a * texture_coords_a[1] + barycentric_b * texture_coords_b[1] + barycentric_c * texture_coords_c[1];
 
-                        color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&r,&g,&b);
+                        color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&final_color.red,&final_color.green,&final_color.blue);
                       }
                     else
                       {
-                        r = 255;
-                        g = 255;
-                        b = 0;
+                        final_color.red = 255;
+                        final_color.green = 255;
+                        final_color.blue = 0;
                       }
+
+                    helper_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
+
+                    final_color = multiply_colors(helper_color,final_color);
                   }
                 }
               }
             }
+
+    return final_color;
   }
 
 void scene_3D::render(t_color_buffer *buffer)
@@ -655,7 +769,7 @@ void scene_3D::render(t_color_buffer *buffer)
     unsigned int i,j;
     point_3D point1, point2;
     double aspect_ratio;
-    unsigned char r,g,b;
+    color ray_color;
 
     aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
 
@@ -672,9 +786,9 @@ void scene_3D::render(t_color_buffer *buffer)
 
           line_3D line(point1,point2);
 
-          this->cast_ray(line,r,g,b,0);
+          ray_color = this->cast_ray(line,0);
 
-          color_buffer_set_pixel(buffer,i,j,r,g,b);
+          color_buffer_set_pixel(buffer,i,j,ray_color.red,ray_color.green,ray_color.blue);
         }
   }
 
@@ -697,30 +811,9 @@ void cross_product(point_3D vector1, point_3D vector2, point_3D &final_vector)
     final_vector.z = vector1.x * vector2.y - vector1.y * vector2.x;
   }
 
-double vector_length(point_3D vector)
-  {
-    return sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-  }
-
 double dot_product(point_3D vector1, point_3D vector2)
   {
     return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
-  }
-
-void normalize(point_3D &vector)
-  {
-    double length = vector_length(vector);
-
-    vector.x /= length;
-    vector.y /= length;
-    vector.z /= length;
-  }
-
-object_3D::object_3D()
-  {
-    this->position.x = 0;
-    this->position.y = 0;
-    this->position.z = 0;
   }
 
 double vectors_angle(point_3D vector1, point_3D vector2)
@@ -879,68 +972,44 @@ bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, do
     return true;
   }
 
+
+
+light_3D::light_3D()
+  {
+    this->position.x = 0.0;
+    this->position.y = 0.0;
+    this->position.z = 0.0;
+    this->intensity = 1.0;
+    this->light_color.red = 255;
+    this->light_color.green = 255;
+    this->light_color.blue = 255;
+    this->light_color.alpha = 255;
+  }
+
 int main(void)
   {
     t_color_buffer buffer,texture;
     scene_3D scene;
-    mesh_3D mesh;
+    mesh_3D mesh, mesh2;
+    light_3D light;
 
-    mesh.load_obj("cube.obj");
+    mesh.load_obj("test.obj");
     color_buffer_load_from_png(&texture,"texture.png");
 
     mesh.set_texture(&texture);
     mesh.print();
-/*
-    vertex_3D v;
 
-    color_buffer_load_from_png(&texture,"texture.png");
+    mesh.scale(0.3,0.3,0.3);
+//    mesh.rotate((PI / 3) * 5,AROUND_X);
+//    mesh.rotate((PI / 3) * 5,AROUND_Y);
 
-    mesh.set_texture(&texture);
-
-    v.position.x = -0.5;
-    v.position.y = 1.5;
-    v.position.z = 0;
-    v.texture_coords[0] = 0.0;
-    v.texture_coords[1] = 0.0;
-    mesh.vertices.push_back(v);
-
-    v.position.x = 0.5;
-    v.position.y = 1.5;
-    v.position.z = 0;
-    v.texture_coords[0] = 1.0;
-    v.texture_coords[1] = 1.0;
-    mesh.vertices.push_back(v);
-
-    v.position.x = 0;
-    v.position.y = 1.5;
-    v.position.z = 0.5;
-    v.texture_coords[0] = 0.0;
-    v.texture_coords[1] = 1.0;
-    mesh.vertices.push_back(v);
-
-    v.position.x = 0;
-    v.position.y = 1.5;
-    v.position.z = -0.5;
-    v.texture_coords[0] = 1.0;
-    v.texture_coords[1] = 0.0;
-    mesh.vertices.push_back(v);
-
-    mesh.triangle_indices.push_back(0);
-    mesh.triangle_indices.push_back(1);
-    mesh.triangle_indices.push_back(2);
-    mesh.triangle_indices.push_back(0);
-    mesh.triangle_indices.push_back(1);
-    mesh.triangle_indices.push_back(3);
-*/
-
-    mesh.rotate((PI / 6) * 5,AROUND_X);
-    mesh.rotate((PI / 6) * 5,AROUND_Y);
-
-    mesh.translate(2,4,0);
+    mesh.translate(2,6,0);
 
     mesh.print();
 
     scene.add_mesh(&mesh);
+    scene.add_mesh(&mesh2);
+    scene.add_light(&light);
 
     scene.render(&buffer);
 
