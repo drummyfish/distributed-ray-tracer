@@ -15,7 +15,7 @@
 
 using namespace std;
 
-#define PI 3.1415926535897932384626
+#Define PI 3.1415926535897932384626
 
 extern "C"
 {
@@ -80,7 +80,6 @@ class light_3D                      /**< light in 3D */
     public:
       light_3D();
       point_3D get_position();
-      void set_position(double x, double y, double z);
   };
 
 class mesh_3D                       /**< 3D object made of triangles */
@@ -225,13 +224,6 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       void add_light(light_3D *light);
   };
 
-void light_3D::set_position(double x, double y, double z)
-  {
-    this->position.x = x;
-    this->position.y = y;
-    this->position.z = z;
-  }
-
 mesh_3D::mesh_3D()
   {
     this->texture = 0;
@@ -291,18 +283,12 @@ void normalize(point_3D &vector)
     vector.z /= length;
   }
 
-double dot_product(point_3D vector1, point_3D vector2)
-  {
-    return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
-  }
-
 color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
 
   {
     unsigned int i;
     point_3D vector_to_light;
     color final_color;
-    double helper;
 
     final_color.red = surface_material.ambient_intensity * surface_material.surface_color.red;
     final_color.green = surface_material.ambient_intensity * surface_material.surface_color.green;
@@ -311,15 +297,11 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     for (i = 0; i < this->lights.size(); i++)
       {
         substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
-        normalize(vector_to_light);
-
-        helper = dot_product(vector_to_light,surface_normal);
-        helper = helper < 0 ? 0 : helper;
-
-        final_color.red = saturate_int(final_color.red + surface_material.surface_color.red * surface_material.diffuse_intensity * helper,0,255);
-        final_color.green = saturate_int(final_color.green + surface_material.surface_color.green * surface_material.diffuse_intensity * helper,0,255);
-        final_color.blue = saturate_int(final_color.blue + surface_material.surface_color.blue * surface_material.diffuse_intensity * helper,0,255);
       }
+
+    normalize(vector_to_light);
+
+    print_point(vector_to_light);
 
     return final_color;
   }
@@ -717,7 +699,7 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
     double *texture_coords_a, *texture_coords_b, *texture_coords_c;
     double barycentric_a, barycentric_b, barycentric_c;
     point_3D starting_point;
-    point_3D normal,normal_a,normal_b,normal_c;
+    point_3D normal;
 
     line.get_point(0,starting_point);
 
@@ -749,18 +731,9 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
                   {
                     depth = distance;
 
-                    normal_a = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l]].normal;
-                    normal_b = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 1]].normal;
-                    normal_c = this->meshes[k]->vertices[this->meshes[k]->triangle_indices[l + 2]].normal;
-
                     normal.x = 0;
                     normal.y = 0;
                     normal.z = 0;
-
-                    normal.x = barycentric_a * normal_a.x + barycentric_b * normal_b.x + barycentric_c * normal_c.x;
-                    normal.y = barycentric_a * normal_a.y + barycentric_b * normal_b.y + barycentric_c * normal_c.y;
-                    normal.z = barycentric_a * normal_a.z + barycentric_b * normal_b.z + barycentric_c * normal_c.z;
-                    normalize(normal);  // interpolation breaks normalization
 
                     if (this->meshes[k]->get_texture() != 0)
                       {
@@ -775,12 +748,12 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
                       {
                         final_color.red = 255;
                         final_color.green = 255;
-                        final_color.blue = 255;
+                        final_color.blue = 0;
                       }
 
-                    final_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
+                    helper_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
 
-                    //final_color = multiply_colors(helper_color,final_color);
+                    final_color = multiply_colors(helper_color,final_color);
                   }
                 }
               }
@@ -836,6 +809,11 @@ void cross_product(point_3D vector1, point_3D vector2, point_3D &final_vector)
     final_vector.x = vector1.y * vector2.z - vector1.z * vector2.y;
     final_vector.y = vector1.z * vector2.x - vector1.x * vector2.z;
     final_vector.z = vector1.x * vector2.y - vector1.y * vector2.x;
+  }
+
+double dot_product(point_3D vector1, point_3D vector2)
+  {
+    return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
   }
 
 double vectors_angle(point_3D vector1, point_3D vector2)
@@ -1015,19 +993,17 @@ int main(void)
     mesh_3D mesh, mesh2;
     light_3D light;
 
-    light.set_position(0,-10,0);
-
     mesh.load_obj("test.obj");
     color_buffer_load_from_png(&texture,"texture.png");
 
-  //  mesh.set_texture(&texture);
+    mesh.set_texture(&texture);
     mesh.print();
 
     mesh.scale(0.3,0.3,0.3);
 //    mesh.rotate((PI / 3) * 5,AROUND_X);
 //    mesh.rotate((PI / 3) * 5,AROUND_Y);
 
-    mesh.translate(0,6,0);
+    mesh.translate(2,6,0);
 
     mesh.print();
 
