@@ -80,6 +80,8 @@ class light_3D                      /**< light in 3D */
     public:
       light_3D();
       point_3D get_position();
+      color get_color();
+      void set_color(unsigned char r, unsigned char g, unsigned char b);
       void set_position(double x, double y, double z);
   };
 
@@ -301,7 +303,7 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
   {
     unsigned int i;
     point_3D vector_to_light, vector_to_camera, reflection_vector;
-    color final_color;
+    color final_color, light_color;
     double helper;
 
     final_color.red = surface_material.ambient_intensity * surface_material.surface_color.red;
@@ -335,11 +337,12 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
         normalize(reflection_vector);
         helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
         helper = helper < 0 ? 0 : helper;
+        light_color = this->lights[i]->get_color();
 
         // add specular part:
-        final_color.red = saturate_int(final_color.red + surface_material.specular_intensity * helper * 255,0,255);
-        final_color.green = saturate_int(final_color.green + surface_material.specular_intensity * helper * 255,0,255);
-        final_color.blue = saturate_int(final_color.blue + surface_material.specular_intensity * helper * 255,0,255);
+        final_color.red = saturate_int(final_color.red + surface_material.specular_intensity * helper * light_color.red,0,255);
+        final_color.green = saturate_int(final_color.green + surface_material.specular_intensity * helper * light_color.green,0,255);
+        final_color.blue = saturate_int(final_color.blue + surface_material.specular_intensity * helper * light_color.blue,0,255);
       }
 
     return final_color;
@@ -508,6 +511,18 @@ double string_to_double(string what, size_t *end_position)
       }
 
     return negative ? -1 * result : result;
+  }
+
+color light_3D::get_color()
+  {
+    return this->light_color;
+  }
+
+void light_3D::set_color(unsigned char r, unsigned char g, unsigned char b)
+  {
+    this->light_color.red = r;
+    this->light_color.green = g;
+    this->light_color.blue = b;
   }
 
 void parse_obj_line(string line,float data[4][3])
@@ -1044,8 +1059,9 @@ int main(void)
     light_3D light;
 
     light.set_position(0,0,0);
+    light.set_color(255,0,0);
 
-    mesh.load_obj("test2.obj");
+    mesh.load_obj("plane.obj");
     color_buffer_load_from_png(&texture,"texture.png");
 
   //  mesh.set_texture(&texture);
