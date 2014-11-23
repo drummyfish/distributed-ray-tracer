@@ -241,9 +241,9 @@ mesh_3D::mesh_3D()
     this->mat.surface_color.blue = 200;
     this->mat.surface_color.alpha = 255;
     this->mat.ambient_intensity = 0.3;
-    this->mat.diffuse_intensity = 0.5;
-    this->mat.specular_intensity = 0.4;
-    this->mat.specular_exponent = 2.0;
+    this->mat.diffuse_intensity = 0.9;
+    this->mat.specular_intensity = 0.6;
+    this->mat.specular_exponent = 100.0;
     this->mat.reflection = 0.7;
     this->mat.refractive_index = 1.2;
     this->mat.transparency = 0;
@@ -300,7 +300,7 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
 
   {
     unsigned int i;
-    point_3D vector_to_light;
+    point_3D vector_to_light, vector_to_camera, reflection_vector;
     color final_color;
     double helper;
 
@@ -308,17 +308,38 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     final_color.green = surface_material.ambient_intensity * surface_material.surface_color.green;
     final_color.blue = surface_material.ambient_intensity * surface_material.surface_color.blue;
 
+    vector_to_camera.x = -1 * position.x;
+    vector_to_camera.y = -1 * position.y;
+    vector_to_camera.z = -1 * position.z;
+
+    normalize(vector_to_camera);
+
     for (i = 0; i < this->lights.size(); i++)
       {
         substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
         normalize(vector_to_light);
 
-        helper = dot_product(vector_to_light,surface_normal);
+        helper = -1 * dot_product(vector_to_light,surface_normal);
         helper = helper < 0 ? 0 : helper;
 
+        // add diffuse part:
         final_color.red = saturate_int(final_color.red + surface_material.surface_color.red * surface_material.diffuse_intensity * helper,0,255);
         final_color.green = saturate_int(final_color.green + surface_material.surface_color.green * surface_material.diffuse_intensity * helper,0,255);
         final_color.blue = saturate_int(final_color.blue + surface_material.surface_color.blue * surface_material.diffuse_intensity * helper,0,255);
+
+        helper = 2 * dot_product(vector_to_light,surface_normal);
+        surface_normal.x *= helper;
+        surface_normal.y *= helper;
+        surface_normal.z *= helper;
+        substract_vectors(surface_normal,vector_to_light,reflection_vector);
+        normalize(reflection_vector);
+        helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
+        helper = helper < 0 ? 0 : helper;
+
+        // add specular part:
+        final_color.red = saturate_int(final_color.red + surface_material.specular_intensity * helper * 255,0,255);
+        final_color.green = saturate_int(final_color.green + surface_material.specular_intensity * helper * 255,0,255);
+        final_color.blue = saturate_int(final_color.blue + surface_material.specular_intensity * helper * 255,0,255);
       }
 
     return final_color;
@@ -341,19 +362,16 @@ point_3D light_3D::get_position()
     return this->position;
   }
 
-void mesh_3D::rotate(double angle, rotation_type type)
+void rotate_point(point_3D &point, double angle, rotation_type type)
   {
-    unsigned int i;
     double x,y,z;
     double x2,y2,z2;
 
-    for (i = 0; i < this->vertices.size(); i++)
-      {
-        x = this->vertices[i].position.x;
-        y = this->vertices[i].position.y;
-        z = this->vertices[i].position.z;
+    x = point.x;
+    y = point.y;
+    z = point.z;
 
-        switch (type)
+    switch (type)
           {
             case AROUND_Z:
               x2 = x * cos(angle) - y * sin(angle);
@@ -372,13 +390,23 @@ void mesh_3D::rotate(double angle, rotation_type type)
               z2 = x * sin(angle) + z * cos(angle);
               y2 = y;
               break;
-
-            default: break;
           }
 
-        this->vertices[i].position.x = x2;
-        this->vertices[i].position.y = y2;
-        this->vertices[i].position.z = z2;
+    point.x = x2;
+    point.y = y2;
+    point.z = z2;
+  }
+
+void mesh_3D::rotate(double angle, rotation_type type)
+  {
+    unsigned int i;
+    double x,y,z;
+    double x2,y2,z2;
+
+    for (i = 0; i < this->vertices.size(); i++)
+      {
+        rotate_point(this->vertices[i].position,angle,type);
+        rotate_point(this->vertices[i].normal,angle,type);
       }
   }
 
@@ -1015,19 +1043,19 @@ int main(void)
     mesh_3D mesh, mesh2;
     light_3D light;
 
-    light.set_position(0,-10,0);
+    light.set_position(0,0,0);
 
-    mesh.load_obj("test.obj");
+    mesh.load_obj("test2.obj");
     color_buffer_load_from_png(&texture,"texture.png");
 
   //  mesh.set_texture(&texture);
     mesh.print();
 
     mesh.scale(0.3,0.3,0.3);
-//    mesh.rotate((PI / 3) * 5,AROUND_X);
-//    mesh.rotate((PI / 3) * 5,AROUND_Y);
+    mesh.rotate(0.4,AROUND_X);
+   // mesh.rotate(0.1,AROUND_Y);
 
-    mesh.translate(0,6,0);
+    mesh.translate(0,6,2);
 
     mesh.print();
 
