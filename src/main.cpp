@@ -81,6 +81,14 @@ class light_3D                      /**< light in 3D */
       light_3D();
       point_3D get_position();
       color get_color();
+      void set_intensity(double intensity);
+      /**<
+       Sets the light intensity.
+
+       @param intensity new intensity in range <0,1>
+       */
+
+      double get_intensity();
       void set_color(unsigned char r, unsigned char g, unsigned char b);
       void set_position(double x, double y, double z);
   };
@@ -305,13 +313,14 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
 
   {
     unsigned int i;
-    point_3D vector_to_light, vector_to_camera, reflection_vector;
+    point_3D vector_to_light, vector_to_camera, reflection_vector, helper_normal;
     color final_color, light_color;
-    double helper;
+    double helper, intensity;
+    int helper_color[3];
 
-    final_color.red = surface_material.ambient_intensity * surface_material.surface_color.red;
-    final_color.green = surface_material.ambient_intensity * surface_material.surface_color.green;
-    final_color.blue = surface_material.ambient_intensity * surface_material.surface_color.blue;
+    helper_color[0] = surface_material.ambient_intensity * surface_material.surface_color.red;
+    helper_color[1] = surface_material.ambient_intensity * surface_material.surface_color.green;
+    helper_color[2] = surface_material.ambient_intensity * surface_material.surface_color.blue;
 
     vector_to_camera.x = -1 * position.x;
     vector_to_camera.y = -1 * position.y;
@@ -323,35 +332,41 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
       {
         line_3D shadow_ray(position,this->lights[i]->get_position());
 
-        if (!this->cast_shadow_ray(shadow_ray,*this->lights[i],0.001))
-          continue;    // point in shadow
+        if (this->cast_shadow_ray(shadow_ray,*this->lights[i],0.001))
+          {
+          intensity = this->lights[i]->get_intensity();
 
-        substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
-        normalize(vector_to_light);
+          substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
+          normalize(vector_to_light);
 
-        helper = -1 * dot_product(vector_to_light,surface_normal);
-        helper = helper < 0 ? 0 : helper;
+          helper = -1 * dot_product(vector_to_light,surface_normal);
+          helper = helper < 0 ? 0 : helper;
 
-        // add diffuse part:
-        final_color.red = saturate_int(final_color.red + surface_material.surface_color.red * surface_material.diffuse_intensity * helper,0,255);
-        final_color.green = saturate_int(final_color.green + surface_material.surface_color.green * surface_material.diffuse_intensity * helper,0,255);
-        final_color.blue = saturate_int(final_color.blue + surface_material.surface_color.blue * surface_material.diffuse_intensity * helper,0,255);
+          // add diffuse part:
+          helper_color[0] += intensity * surface_material.surface_color.red * surface_material.diffuse_intensity * helper;
+          helper_color[1] += intensity * surface_material.surface_color.green * surface_material.diffuse_intensity * helper;
+          helper_color[2] += intensity * surface_material.surface_color.blue * surface_material.diffuse_intensity * helper;
 
-        helper = 2 * dot_product(vector_to_light,surface_normal);
-        surface_normal.x *= helper;
-        surface_normal.y *= helper;
-        surface_normal.z *= helper;
-        substract_vectors(surface_normal,vector_to_light,reflection_vector);
-        normalize(reflection_vector);
-        helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
-        helper = helper < 0 ? 0 : helper;
-        light_color = this->lights[i]->get_color();
+          // add specular part:
+          helper = 2 * dot_product(vector_to_light,surface_normal);
+          helper_normal.x = helper * surface_normal.x;
+          helper_normal.y = helper * surface_normal.y;
+          helper_normal.z = helper * surface_normal.z;
+          substract_vectors(helper_normal,vector_to_light,reflection_vector);
+          normalize(reflection_vector);
+          helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
+          helper = helper < 0 ? 0 : helper;
+          light_color = this->lights[i]->get_color();
 
-        // add specular part:
-        final_color.red = saturate_int(final_color.red + surface_material.specular_intensity * helper * light_color.red,0,255);
-        final_color.green = saturate_int(final_color.green + surface_material.specular_intensity * helper * light_color.green,0,255);
-        final_color.blue = saturate_int(final_color.blue + surface_material.specular_intensity * helper * light_color.blue,0,255);
+          helper_color[0] += intensity * surface_material.specular_intensity * helper * light_color.red;
+          helper_color[1] += intensity * surface_material.specular_intensity * helper * light_color.green;
+          helper_color[2] += intensity * surface_material.specular_intensity * helper * light_color.blue;
+        }
       }
+
+    final_color.red = saturate_int(helper_color[0],0,255);
+    final_color.green = saturate_int(helper_color[1],0,255);
+    final_color.blue = saturate_int(helper_color[2],0,255);
 
     return final_color;
   }
@@ -703,6 +718,11 @@ bool mesh_3D::load_obj(string filename)
     return true;
   }
 
+void light_3D::set_intensity(double intensity)
+  {
+    this->intensity = intensity;
+  }
+
 void mesh_3D::print()
   {
     unsigned int i, counter;
@@ -894,6 +914,12 @@ void scene_3D::render(t_color_buffer *buffer)
 
           color_buffer_set_pixel(buffer,i,j,ray_color.red,ray_color.green,ray_color.blue);
         }
+  }
+
+
+double light_3D::get_intensity()
+  {
+    return this->intensity;
   }
 
 void scene_3D::add_mesh(mesh_3D *mesh)
@@ -1088,10 +1114,13 @@ int main(void)
     t_color_buffer buffer,texture;
     scene_3D scene;
     mesh_3D mesh, mesh2;
-    light_3D light;
+    light_3D light, light2;
 
     light.set_position(-6,-4,0);
-    light.set_color(255,255,255);
+    light.set_intensity(0.5);
+
+    light2.set_position(6,-3,3);
+    light2.set_intensity(0.6);
 
     mesh.load_obj("test2.obj");
     mesh2.load_obj("plane.obj");
@@ -1104,13 +1133,14 @@ int main(void)
     mesh.rotate(0.4,AROUND_X);
    // mesh.rotate(0.1,AROUND_Y);
 
-    mesh.translate(0,5.5,0);
+    mesh.translate(0,3,0);
     mesh2.translate(0,8,2);
 
     mesh.print();
 
     scene.add_mesh(&mesh);
     scene.add_mesh(&mesh2);
+    scene.add_light(&light2);
     scene.add_light(&light);
 
     scene.render(&buffer);
