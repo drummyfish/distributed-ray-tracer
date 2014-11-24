@@ -173,7 +173,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       double focal_distance;
       unsigned int resolution[2];   /**< final picture resolution */
 
-      bool cast_shadow_ray(line_3D line, light_3D light);
+      bool cast_shadow_ray(line_3D line, light_3D light, double threshold);
 
       /**<
        Cast a shadow ray to given light and checks if the point the
@@ -181,6 +181,9 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
 
        @param line line representing the ray
        @param light light to be checked
+       @param threshold distance to which the intersections don't count
+              so that the triangles don't cast shadows on themselves due
+              to numerical errors
        @return true if the ray hits the light without hitting any
                other object in the scene, false otherwise
        */
@@ -318,6 +321,11 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
 
     for (i = 0; i < this->lights.size(); i++)
       {
+        line_3D shadow_ray(position,this->lights[i]->get_position());
+
+        if (!this->cast_shadow_ray(shadow_ray,*this->lights[i],0.001))
+          continue;    // point in shadow
+
         substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
         normalize(vector_to_light);
 
@@ -403,8 +411,6 @@ void rotate_point(point_3D &point, double angle, rotation_type type)
 void mesh_3D::rotate(double angle, rotation_type type)
   {
     unsigned int i;
-    double x,y,z;
-    double x2,y2,z2;
 
     for (i = 0; i < this->vertices.size(); i++)
       {
@@ -737,11 +743,6 @@ double point_distance(point_3D a, point_3D b)
     return sqrt(difference.x * difference.x + difference.y * difference.y + difference.z * difference.z);
   }
 
-bool scene_3D::cast_shadow_ray(line_3D line, light_3D light)
-  {
-    return true;
-  }
-
 color multiply_colors(color color1, color color2)
   {
     color final_color;
@@ -749,6 +750,39 @@ color multiply_colors(color color1, color color2)
     final_color.red = (color1.red / 255.0 * color2.red / 255.0) * 255;
     final_color.green = (color1.green / 255.0 * color2.green / 255.0) * 255;
     final_color.blue = (color1.blue / 255.0 * color2.blue / 255.0) * 255;
+
+    return final_color;
+  }
+
+bool scene_3D::cast_shadow_ray(line_3D line, light_3D light, double threshold)
+  {
+    unsigned int i, j;
+    triangle_3D triangle;
+    double a,b,c,t,distance;
+    point_3D intersection,line_origin;
+
+    line.get_point(0,line_origin);
+
+    for (i = 0; i < this->meshes.size(); i++)
+      for (j = 0; j < this->meshes[i]->triangle_indices.size(); j += 3)
+        {
+          triangle.a = this->meshes[i]->vertices[this->meshes[i]->triangle_indices[j]].position;
+          triangle.b = this->meshes[i]->vertices[this->meshes[i]->triangle_indices[j + 1]].position;
+          triangle.c = this->meshes[i]->vertices[this->meshes[i]->triangle_indices[j + 2]].position;
+
+          if (line.intersects_triangle(triangle,a,b,c,t))
+            {
+              line.get_point(t,intersection);
+              distance = point_distance(line_origin,intersection);
+
+              if (distance > threshold)
+                {
+                  return false;
+                }
+            }
+        }
+
+    return true;
   }
 
 color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
@@ -821,9 +855,9 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
                         final_color.blue = 255;
                       }
 
-                    final_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
+                    helper_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
 
-                    //final_color = multiply_colors(helper_color,final_color);
+                    final_color = multiply_colors(helper_color,final_color);
                   }
                 }
               }
@@ -1037,8 +1071,6 @@ bool line_3D::intersects_triangle(triangle_3D triangle, double &a, double &b, do
     return true;
   }
 
-
-
 light_3D::light_3D()
   {
     this->position.x = 0.0;
@@ -1058,20 +1090,22 @@ int main(void)
     mesh_3D mesh, mesh2;
     light_3D light;
 
-    light.set_position(0,0,0);
-    light.set_color(255,0,0);
+    light.set_position(-6,-4,0);
+    light.set_color(255,255,255);
 
-    mesh.load_obj("plane.obj");
+    mesh.load_obj("test2.obj");
+    mesh2.load_obj("plane.obj");
     color_buffer_load_from_png(&texture,"texture.png");
 
-  //  mesh.set_texture(&texture);
+    mesh.set_texture(&texture);
     mesh.print();
 
     mesh.scale(0.3,0.3,0.3);
     mesh.rotate(0.4,AROUND_X);
    // mesh.rotate(0.1,AROUND_Y);
 
-    mesh.translate(0,6,2);
+    mesh.translate(0,5.5,0);
+    mesh2.translate(0,8,2);
 
     mesh.print();
 
