@@ -35,7 +35,7 @@ mesh_3D::mesh_3D()
     this->mat.diffuse_intensity = 0.9;
     this->mat.specular_intensity = 0.6;
     this->mat.specular_exponent = 100.0;
-    this->mat.reflection = 0.7;
+    this->mat.reflection = 0.0;
     this->mat.refractive_index = 1.2;
     this->mat.transparency = 0;
     this->bounding_sphere_center.x = 0;
@@ -130,8 +130,25 @@ double dot_product(point_3D vector1, point_3D vector2)
     return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
   }
 
-color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
+point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
+  {
+    double helper;
+    point_3D result;
 
+    normalize(normal);
+    normalize(vector_to_light);
+
+    helper = 2 * dot_product(vector_to_light,normal);
+    normal.x = helper * normal.x;
+    normal.y = helper * normal.y;
+    normal.z = helper * normal.z;
+    substract_vectors(normal,vector_to_light,result);
+    normalize(result);
+
+    return result;
+  }
+
+color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
   {
     unsigned int i;
     point_3D vector_to_light, vector_to_camera, reflection_vector, helper_normal;
@@ -169,12 +186,7 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
           helper_color[2] += intensity * surface_material.surface_color.blue * surface_material.diffuse_intensity * helper;
 
           // add specular part:
-          helper = 2 * dot_product(vector_to_light,surface_normal);
-          helper_normal.x = helper * surface_normal.x;
-          helper_normal.y = helper * surface_normal.y;
-          helper_normal.z = helper * surface_normal.z;
-          substract_vectors(helper_normal,vector_to_light,reflection_vector);
-          normalize(reflection_vector);
+          reflection_vector = make_reflection_vector(surface_normal,vector_to_light);
           helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
           helper = helper < 0 ? 0 : helper;
           light_color = this->lights[i]->get_color();
@@ -239,6 +251,12 @@ void rotate_point(point_3D &point, double angle, rotation_type type)
               z2 = x * sin(angle) + z * cos(angle);
               y2 = y;
               break;
+
+            default:
+              x2 = x;
+              y2 = y;
+              z2 = z;
+              break;
           }
 
     point.x = x2;
@@ -282,10 +300,10 @@ t_color_buffer *mesh_3D::get_texture()
     return this->texture;
   }
 
-scene_3D::scene_3D()
+scene_3D::scene_3D(unsigned int width, unsigned int height)
   {
-    this->resolution[0] = 640;
-    this->resolution[1] = 480;
+    this->resolution[0] = width;
+    this->resolution[1] = height;
     this->camera_position.x = 0;
     this->camera_position.y = 0;
     this->camera_position.z = 0;
@@ -628,16 +646,18 @@ bool scene_3D::cast_shadow_ray(line_3D line, light_3D light, double threshold)
     return true;
   }
 
-color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
+color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_depth)
   {
     unsigned int k, l;
     triangle_3D triangle;
-    color final_color, helper_color;
+    color final_color, helper_color, add_color;
     double depth, t;
     double *texture_coords_a, *texture_coords_b, *texture_coords_c;
     double barycentric_a, barycentric_b, barycentric_c;
     point_3D starting_point;
     point_3D normal,normal_a,normal_b,normal_c;
+    point_3D reflection_vector, vector_to_camera;
+    material mat;
 
     line.get_point(0,starting_point);
 
@@ -668,7 +688,9 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
                 line.get_point(t,intersection);
                 double distance = point_distance(starting_point,intersection);
 
-                if (distance < depth)  // depth test
+                mat = this->meshes[k]->get_material();
+
+                if (distance < depth && distance > threshold)  // depth test
                   {
                     depth = distance;
 
@@ -701,9 +723,55 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
                         final_color.blue = 255;
                       }
 
-                    helper_color = compute_lighting(intersection,this->meshes[k]->get_material(),normal);
+                    helper_color = compute_lighting(intersection,mat,normal);
 
                     final_color = multiply_colors(helper_color,final_color);
+
+                    if (recursion_depth != 0)
+                      {
+                        vector_to_camera.x = -1 * intersection.x;
+                        vector_to_camera.y = -1 * intersection.y;
+                        vector_to_camera.z = -1 * intersection.z;
+
+                        normalize(vector_to_camera);
+
+                        if (mat.reflection > 0)
+                          {
+                            point_3D helper_point;
+                            reflection_vector = make_reflection_vector(normal,vector_to_camera);
+
+                            reflection_vector.x *= -1;
+                            reflection_vector.y *= -1;
+                            reflection_vector.z *= -1;
+/*
+cout << "__" << endl;
+print_point(intersection);
+
+cout << "----" << endl;
+print_point(normal);
+print_point(vector_to_camera);
+print_point(reflection_vector);
+cout << "----" << endl;
+*/
+
+
+                            helper_point.x = reflection_vector.x + intersection.x;
+                            helper_point.y = reflection_vector.y + intersection.y;
+                            helper_point.z = reflection_vector.z + intersection.z;
+
+                            //line_3D reflection_line(intersection,helper_point);
+helper_point.x = normal.x + reflection_vector.x;
+helper_point.y = normal.y + reflection_vector.y;
+helper_point.z = normal.z + reflection_vector.z;
+line_3D reflection_line(intersection,helper_point);
+
+
+                            add_color = cast_ray(reflection_line,0.01,recursion_depth - 1);
+
+                            multiply_color(add_color,mat.reflection);
+                            final_color = add_colors(final_color,add_color);
+                          }
+                      }
                   }
                 }
               }
@@ -712,7 +780,25 @@ color scene_3D::cast_ray(line_3D line, unsigned int recursion_depth)
     return final_color;
   }
 
-void scene_3D::render(t_color_buffer *buffer)
+color add_colors(color color1, color color2)
+  {
+    color result;
+
+    result.red = saturate_int(color1.red + color2.red,0,255);
+    result.green = saturate_int(color1.green + color2.green,0,255);
+    result.blue = saturate_int(color1.blue + color2.blue,0,255);
+
+    return result;
+  }
+
+void multiply_color(color &c, double a)
+  {
+    c.red = saturate_int(c.red * a,0,255);
+    c.green = saturate_int(c.green * a,0,255);
+    c.blue = saturate_int(c.blue * a,0,255);
+  }
+
+void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
   {
     color_buffer_init(buffer,this->resolution[0],this->resolution[1]);
 
@@ -724,7 +810,10 @@ void scene_3D::render(t_color_buffer *buffer)
     aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
 
     for (j = 0; j < this->resolution[1]; j++)
-      { cout << j << endl;
+      {
+        if (progress_callback != NULL)
+          progress_callback(j);
+
         for (i = 0; i < this->resolution[0]; i++)
           {
             point1.x = 0;
@@ -737,7 +826,7 @@ void scene_3D::render(t_color_buffer *buffer)
 
             line_3D line(point1,point2);
 
-            ray_color = this->cast_ray(line,0);
+            ray_color = this->cast_ray(line,0.01,1);
 
             color_buffer_set_pixel(buffer,i,j,ray_color.red,ray_color.green,ray_color.blue);
           }

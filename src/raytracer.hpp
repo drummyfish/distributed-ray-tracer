@@ -219,28 +219,34 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        @return the computed color
        */
 
-      color cast_ray(line_3D line, unsigned int recursion_depth);
+      color cast_ray(line_3D line, double threshold, unsigned int recursion_depth);
 
       /**<
        Casts a ray and gets the color it hits (it is recursively
        computed by casting secondary rays)
 
        @param line line representing the ray
+       @param threshold distance to which intersections don't count so
+              that numerical errors don't cause for example reflection
+              rays hit the surface they were cast from
        @param recursion depth depth of recursion, 0 means no secondary
               ray will be cast
        @return computed color
        */
 
     public:
-      scene_3D();
+      scene_3D(unsigned int width, unsigned int height);
 
-      void render(t_color_buffer *buffer);
+      void render(t_color_buffer *buffer, void (* progress_callback)(int));
 
       /**<
        Renders the set up scene into given color buffer.
 
        @param buffer buffer to render the scene to, it must not be
               initialised
+       @param progress_callback function that will be called at the
+              beginning of processing of each line, the parameter is
+              the line number, this parameter can be NULL
        */
 
       void add_mesh(mesh_3D *mesh);
@@ -265,5 +271,8 @@ color multiply_colors(color color1, color color2);
 void cross_product(point_3D vector1, point_3D vector2, point_3D &final_vector);
 double vectors_angle(point_3D vector1, point_3D vector2);
 double triangle_area(triangle_3D triangle);
+point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light);
+color add_colors(color color1, color color2);
+void multiply_color(color &c, double a);
 
 #endif
