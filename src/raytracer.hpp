@@ -188,6 +188,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       vector<light_3D *> lights;
       point_3D camera_position;
       double focal_distance;
+      color background_color;
       unsigned int resolution[2];   /**< final picture resolution */
 
       bool cast_shadow_ray(line_3D line, light_3D light, double threshold);
@@ -251,6 +252,10 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
 
       void add_mesh(mesh_3D *mesh);
       void add_light(light_3D *light);
+      void set_focal_distance(float distance);
+      void set_background_color(unsigned char r, unsigned char g, unsigned char b);
+      void camera_translate(double x, double y, double z);
+      void camera_rotate(double angle, rotation_type type);
   };
 
 void substract_vectors(point_3D vector1, point_3D vector2, point_3D &final_vector);

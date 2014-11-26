@@ -228,6 +228,9 @@ void rotate_point(point_3D &point, double angle, rotation_type type)
     double x,y,z;
     double x2,y2,z2;
 
+    while (angle < 0)
+      angle += 2 * PI;
+
     x = point.x;
     y = point.y;
     z = point.z;
@@ -273,6 +276,8 @@ void mesh_3D::rotate(double angle, rotation_type type)
         rotate_point(this->vertices[i].position,angle,type);
         rotate_point(this->vertices[i].normal,angle,type);
       }
+
+    this->update_bounding_sphere();
   }
 
 void mesh_3D::scale(double x, double y, double z)
@@ -307,15 +312,41 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->camera_position.x = 0;
     this->camera_position.y = 0;
     this->camera_position.z = 0;
-    this->focal_distance = 1.0;
+    this->focal_distance = 0.5;
+    this->background_color.red = 255;
+    this->background_color.green = 255;
+    this->background_color.blue = 255;
+  }
+
+void scene_3D::set_background_color(unsigned char r, unsigned char g, unsigned char b)
+  {
+    this->background_color.red = r;
+    this->background_color.green = g;
+    this->background_color.blue = b;
+  }
+
+void scene_3D::camera_translate(double x, double y, double z)
+  {
+    unsigned int i;
+
+    for (i = 0; i < this->meshes.size(); i++)
+      this->meshes[i]->translate(-x, -y, -z);
+  }
+
+void scene_3D::camera_rotate(double angle, rotation_type type)
+  {
+    unsigned int i;
+
+    for (i = 0; i < this->meshes.size(); i++)
+      this->meshes[i]->rotate(angle,type);
+  }
+
+void scene_3D::set_focal_distance(float distance)
+  {
+    this->focal_distance = distance;
   }
 
 double string_to_double(string what, size_t *end_position)
-  /**<
-   Implementation of strtod because it can't be used because
-   of a MinGW bug.
-   */
-
   {
     *end_position = 0;
     double result = 0.0;
@@ -663,9 +694,9 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
 
     depth = 99999999;
 
-    final_color.red = 255;
-    final_color.green = 255;
-    final_color.blue = 255;
+    final_color.red = this->background_color.red;
+    final_color.green = this->background_color.green;
+    final_color.blue = this->background_color.blue;
 
     for (k = 0; k < this->meshes.size(); k++)
       {
@@ -743,23 +774,10 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                             reflection_vector.x *= -1;
                             reflection_vector.y *= -1;
                             reflection_vector.z *= -1;
-/*
-cout << "__" << endl;
-print_point(intersection);
-print_point(normal);
-print_point(vector_to_camera);
-print_point(reflection_vector);
-*/
 
-
-                            helper_point.x = reflection_vector.x + intersection.x;
-                            helper_point.y = reflection_vector.y + intersection.y;
-                            helper_point.z = reflection_vector.z + intersection.z;
-
-                            //line_3D reflection_line(intersection,helper_point);
-helper_point.x = intersection.x + reflection_vector.x;
-helper_point.y = intersection.y + reflection_vector.y;
-helper_point.z = intersection.z + reflection_vector.z;
+                            helper_point.x = intersection.x + reflection_vector.x;
+                            helper_point.y = intersection.y + reflection_vector.y;
+                            helper_point.z = intersection.z + reflection_vector.z;
 
                             line_3D reflection_line(intersection,helper_point);
 
