@@ -52,14 +52,14 @@ int main(void)
 
     mesh.scale(0.5,0.5,0.5);
   //  mesh3.scale(0.5,0.5,0.5);
-  //  mesh.rotate(0.8,AROUND_X);
-  //  mesh.rotate(0.1,AROUND_Y);
+    mesh.rotate(0.8,AROUND_X);
+    mesh.rotate(0.1,AROUND_Y);
 
 
-    mesh2.rotate(0.4,AROUND_Z);
+    mesh2.rotate(1.2,AROUND_Z);
 
-    mesh.translate(2,4,2);
-    mesh2.translate(-1,9,2);
+    mesh.translate(2,18,2);
+    mesh2.translate(-1,19,2);
   //  mesh3.translate(3,2,0);
 
   //  mesh.print();
@@ -78,11 +78,6 @@ mesh2.mat.reflection = 0.2;
 mesh2.print();
 
     scene.render(&buffer,NULL);
-
-
-print_point(mesh.bounding_sphere_center);
-cout << mesh.bounding_sphere_radius << endl;
-
     color_buffer_save_to_png(&buffer,"picture.png");
 
     return 0;

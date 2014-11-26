@@ -307,7 +307,7 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->camera_position.x = 0;
     this->camera_position.y = 0;
     this->camera_position.z = 0;
-    this->focal_distance = 0.25;
+    this->focal_distance = 1.0;
   }
 
 double string_to_double(string what, size_t *end_position)
@@ -746,12 +746,9 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
 /*
 cout << "__" << endl;
 print_point(intersection);
-
-cout << "----" << endl;
 print_point(normal);
 print_point(vector_to_camera);
 print_point(reflection_vector);
-cout << "----" << endl;
 */
 
 
@@ -760,10 +757,11 @@ cout << "----" << endl;
                             helper_point.z = reflection_vector.z + intersection.z;
 
                             //line_3D reflection_line(intersection,helper_point);
-helper_point.x = normal.x + reflection_vector.x;
-helper_point.y = normal.y + reflection_vector.y;
-helper_point.z = normal.z + reflection_vector.z;
-line_3D reflection_line(intersection,helper_point);
+helper_point.x = intersection.x + reflection_vector.x;
+helper_point.y = intersection.y + reflection_vector.y;
+helper_point.z = intersection.z + reflection_vector.z;
+
+                            line_3D reflection_line(intersection,helper_point);
 
 
                             add_color = cast_ray(reflection_line,0.01,recursion_depth - 1);
