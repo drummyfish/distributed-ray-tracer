@@ -42,8 +42,11 @@ int main(void)
     cup.mat.surface_color.red = 255;
     cup.mat.surface_color.green = 0;
     cup.mat.surface_color.blue = 100;
+    cup.mat.ambient_intensity = 0.2;
+    cup.mat.diffuse_intensity = 0.4;
     cup.mat.specular_intensity = 0.9;
     cup.mat.specular_exponent = 50;
+    //cup.mat.glitter = 0.5;
     cup.scale(1.25,1.25,1.25);
     cup.rotate(-1.4,AROUND_X);
     cup.rotate(0.1,AROUND_Y);
@@ -67,18 +70,18 @@ int main(void)
     scene.add_light(&light2);
     scene.add_light(&light);
 
-   /* scene.camera_translate(8,4,13);
+    scene.camera_translate(8,4,13);
     scene.camera_rotate(-0.4,AROUND_Z);
     scene.camera_rotate(0.5,AROUND_X);
     scene.set_background_color(255,200,100);
-    */
 
+/*
     scene.camera_translate(28,15,13);
     scene.camera_rotate(-1.5,AROUND_Z);
     scene.camera_rotate(0.5,AROUND_X);
     scene.set_background_color(255,200,100);
-
-
+*/
+/*
     scene.set_distribution_parameters(
       4,     // shadow rays
       0.5,   // shadow range
@@ -86,7 +89,7 @@ int main(void)
       5.0,   // lens width
       50     // focus distance
       );
-
+*/
     scene.render(&buffer,print_progress);
     color_buffer_save_to_png(&buffer,"picture.png");
 

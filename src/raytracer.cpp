@@ -35,9 +35,10 @@ mesh_3D::mesh_3D()
     this->mat.diffuse_intensity = 0.9;
     this->mat.specular_intensity = 0.6;
     this->mat.specular_exponent = 100.0;
-    this->mat.reflection = 0.0;
+    this->mat.reflection = 0;
     this->mat.refractive_index = 1.2;
     this->mat.transparency = 0;
+    this->mat.glitter = 0;
     this->bounding_sphere_center.x = 0;
     this->bounding_sphere_center.y = 0;
     this->bounding_sphere_center.z = 0;
@@ -148,11 +149,11 @@ point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
     return result;
   }
 
-void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int dept_of_field_rays, double lens_width, double focus_distance)
+void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance)
   {
     this->shadow_rays = shadow_rays;
     this->shadow_range = shadow_range;
-    this->dept_of_field_rays = dept_of_field_rays;
+    this->depth_of_field_rays = depth_of_field_rays;
     this->lens_width = lens_width;
     this->focus_distance = focus_distance;
   }
@@ -165,8 +166,8 @@ double random_double()
 color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
   {
     unsigned int i, j;
-    point_3D vector_to_light, vector_to_camera, reflection_vector;
-    color final_color, light_color;
+    point_3D vector_to_light, vector_to_camera, reflection_vector, position2;
+    color final_color, light_color, glitter_color;
     double helper, intensity, distance_penalty;
     int helper_color[3];
 
@@ -224,6 +225,21 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     final_color.red = saturate_int(helper_color[0],0,255);
     final_color.green = saturate_int(helper_color[1],0,255);
     final_color.blue = saturate_int(helper_color[2],0,255);
+
+    if (surface_material.glitter > 0)
+      {
+        position2.x = position.x + surface_normal.x + (random_double() * 0.5) - 0.25;
+        position2.y = position.y + surface_normal.y + (random_double() * 0.5) - 0.25;
+        position2.z = position.z + surface_normal.z + (random_double() * 0.5) - 0.25;
+
+        line_3D glitter_ray(position,position2);
+
+        glitter_color = cast_ray(glitter_ray,ERROR_OFFSET,1);
+
+        final_color.red = saturate_int(final_color.red + surface_material.glitter * glitter_color.red,0,255);
+        final_color.green = saturate_int(final_color.green + surface_material.glitter * glitter_color.green,0,255);
+        final_color.blue = saturate_int(final_color.blue + surface_material.glitter * glitter_color.blue,0,255);
+      }
 
     return final_color;
   }
@@ -347,6 +363,9 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->background_color.blue = 255;
     this->shadow_rays = 1;
     this->shadow_range = 0.1;
+    this->depth_of_field_rays = 1;
+    this->focus_distance = 10;
+    this->lens_width = 2.0;
   }
 
 void scene_3D::set_background_color(unsigned char r, unsigned char g, unsigned char b)
@@ -856,7 +875,7 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
     color_buffer_init(buffer,this->resolution[0],this->resolution[1]);
 
     unsigned int i, j, k;
-    point_3D point1, point2, point3;
+    point_3D point1, point2;
     double aspect_ratio, angle, distance;
     color ray_color, helper_color;
     unsigned int color_sum[3];
@@ -881,17 +900,17 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
             line_3D line(point1,point2);
             ray_color = this->cast_ray(line,ERROR_OFFSET,1); // main ray
 
-            if (this->dept_of_field_rays != 1)
+            if (this->depth_of_field_rays != 1)
               {
                 color_sum[0] = ray_color.red;
                 color_sum[1] = ray_color.green;
                 color_sum[2] = ray_color.blue;
 
                 point2.x = point2.x * this->focus_distance;
-                point2.y = (point2.y + this->focal_distance) * this->focus_distance - this->focal_distance;
+                point2.y = (point2.y + this->focal_distance) * this->focus_distance - this->focal_distance; // the vector must be shifted to (0,0,0) before multiplication, then shifted back
                 point2.z = point2.z * this->focus_distance;
 
-                for (k = 1; k < this->dept_of_field_rays; k++)   // additional rays (for dept of field)
+                for (k = 1; k < this->depth_of_field_rays; k++)   // additional rays (for dept of field)
                   {
                     angle = random_double() * 2 * PI;   // random position in polar coordinates
                     distance = random_double() * this->lens_width / 2.0;
@@ -908,9 +927,9 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
                     color_sum[2] += helper_color.blue;
                   }
 
-                color_sum[0] /= this->dept_of_field_rays;
-                color_sum[1] /= this->dept_of_field_rays;
-                color_sum[2] /= this->dept_of_field_rays;
+                color_sum[0] /= this->depth_of_field_rays;
+                color_sum[1] /= this->depth_of_field_rays;
+                color_sum[2] /= this->depth_of_field_rays;
 
                 ray_color.red = color_sum[0];
                 ray_color.green = color_sum[1];
