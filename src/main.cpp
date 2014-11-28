@@ -67,13 +67,25 @@ int main(void)
     scene.add_light(&light2);
     scene.add_light(&light);
 
-    scene.camera_translate(8,4,13);
+   /* scene.camera_translate(8,4,13);
     scene.camera_rotate(-0.4,AROUND_Z);
     scene.camera_rotate(0.5,AROUND_X);
     scene.set_background_color(255,200,100);
-    scene.set_resolution(640,480);
+    */
 
-    scene.set_distribution_parameters(4,0.5);
+    scene.camera_translate(28,15,13);
+    scene.camera_rotate(-1.5,AROUND_Z);
+    scene.camera_rotate(0.5,AROUND_X);
+    scene.set_background_color(255,200,100);
+
+
+    scene.set_distribution_parameters(
+      4,     // shadow rays
+      0.5,   // shadow range
+      30,    // DOF rays
+      5.0,   // lens width
+      50     // focus distance
+      );
 
     scene.render(&buffer,print_progress);
     color_buffer_save_to_png(&buffer,"picture.png");

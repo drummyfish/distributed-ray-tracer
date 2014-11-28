@@ -194,6 +194,9 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       point_3D camera_position;
       unsigned int shadow_rays;
       double shadow_range;
+      unsigned int dept_of_field_rays;
+      double lens_width;
+      double focus_distance;
       double focal_distance;
       color background_color;
       unsigned int resolution[2];   /**< final picture resolution */
@@ -247,7 +250,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
     public:
       scene_3D(unsigned int width, unsigned int height);
 
-      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range);
+      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int dept_of_field_rays, double lens_width, double focus_distance);
 
       /**<
        Sets the parameters for distributed ray-casting.
@@ -258,6 +261,13 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        @param shadow_range if multiple shadow rays are being casted
               from each point, this parameter says how much they should
               differ
+       @param dept_of_field_rays number of rays casted for each pixel
+              to achieve dept of field effect, 1 means no depth of
+              field
+       @param lens_width lens width that is used when depth of field
+              is enabled
+       @param focus_distance distance at which objects will be sharp
+              when depth of field is enabled
        */
 
       void render(t_color_buffer *buffer, void (* progress_callback)(int));

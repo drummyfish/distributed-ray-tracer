@@ -148,10 +148,13 @@ point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
     return result;
   }
 
-void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range)
+void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int dept_of_field_rays, double lens_width, double focus_distance)
   {
     this->shadow_rays = shadow_rays;
     this->shadow_range = shadow_range;
+    this->dept_of_field_rays = dept_of_field_rays;
+    this->lens_width = lens_width;
+    this->focus_distance = focus_distance;
   }
 
 double random_double()
@@ -162,7 +165,7 @@ double random_double()
 color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
   {
     unsigned int i, j;
-    point_3D vector_to_light, vector_to_camera, reflection_vector, helper_normal;
+    point_3D vector_to_light, vector_to_camera, reflection_vector;
     color final_color, light_color;
     double helper, intensity, distance_penalty;
     int helper_color[3];
@@ -180,7 +183,6 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     for (i = 0; i < this->lights.size(); i++)
       {
         unsigned int sum;
-        point_3D light_shifted;
 
         sum = this->cast_shadow_ray(position,*this->lights[i],ERROR_OFFSET,0.0) ? 1 : 0; // main shadow ray
 
@@ -311,7 +313,6 @@ void mesh_3D::rotate(double angle, rotation_type type)
 void mesh_3D::scale(double x, double y, double z)
   {
     unsigned int i;
-    double max;
 
     for (i = 0; i < this->vertices.size(); i++)
       {
@@ -598,7 +599,7 @@ bool mesh_3D::load_obj(string filename)
                   vt_index = floor(obj_line_data[i][1]) - 1;
                   vn_index = floor(obj_line_data[i][2]) - 1;
 
-                  if (indices[i] >= this->vertices.size() || vt_index >= texture_vertices.size())
+                  if (indices[i] >= (int) this->vertices.size() || vt_index >= (int) texture_vertices.size())
                     continue;
 
                   this->vertices[indices[i]].texture_coords[0] = texture_vertices[vt_index].x;
@@ -676,7 +677,7 @@ bool scene_3D::cast_shadow_ray(point_3D position, light_3D light, double thresho
     unsigned int i, j;
     triangle_3D triangle;
     double a,b,c,t,distance;
-    point_3D intersection,line_origin;
+    point_3D intersection;
     point_3D light_position;
     light_position = light.get_position();
 
@@ -854,10 +855,11 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
   {
     color_buffer_init(buffer,this->resolution[0],this->resolution[1]);
 
-    unsigned int i,j;
-    point_3D point1, point2;
-    double aspect_ratio;
-    color ray_color;
+    unsigned int i, j, k;
+    point_3D point1, point2, point3;
+    double aspect_ratio, angle, distance;
+    color ray_color, helper_color;
+    unsigned int color_sum[3];
 
     aspect_ratio = this->resolution[1] / ((double) this->resolution[0]);
 
@@ -877,8 +879,43 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
             point2.z = -1 * aspect_ratio * (j / ((double) this->resolution[1]) - 0.5);
 
             line_3D line(point1,point2);
+            ray_color = this->cast_ray(line,ERROR_OFFSET,1); // main ray
 
-            ray_color = this->cast_ray(line,ERROR_OFFSET,1);
+            if (this->dept_of_field_rays != 1)
+              {
+                color_sum[0] = ray_color.red;
+                color_sum[1] = ray_color.green;
+                color_sum[2] = ray_color.blue;
+
+                point2.x = point2.x * this->focus_distance;
+                point2.y = (point2.y + this->focal_distance) * this->focus_distance - this->focal_distance;
+                point2.z = point2.z * this->focus_distance;
+
+                for (k = 1; k < this->dept_of_field_rays; k++)   // additional rays (for dept of field)
+                  {
+                    angle = random_double() * 2 * PI;   // random position in polar coordinates
+                    distance = random_double() * this->lens_width / 2.0;
+
+                    point1.x = distance * cos(angle);
+                    point1.z = distance * sin(angle);
+
+                    line_3D line2(point1,point2);
+
+                    helper_color = this->cast_ray(line2,ERROR_OFFSET,1);
+
+                    color_sum[0] += helper_color.red;
+                    color_sum[1] += helper_color.green;
+                    color_sum[2] += helper_color.blue;
+                  }
+
+                color_sum[0] /= this->dept_of_field_rays;
+                color_sum[1] /= this->dept_of_field_rays;
+                color_sum[2] /= this->dept_of_field_rays;
+
+                ray_color.red = color_sum[0];
+                ray_color.green = color_sum[1];
+                ray_color.blue = color_sum[2];
+              }
 
             color_buffer_set_pixel(buffer,i,j,ray_color.red,ray_color.green,ray_color.blue);
           }
