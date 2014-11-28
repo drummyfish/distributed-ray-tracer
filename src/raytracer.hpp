@@ -15,6 +15,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <stdlib.h>
+
+#define ERROR_OFFSET 0.01
 
 using namespace std;
 
@@ -81,6 +84,8 @@ class light_3D                      /**< light in 3D */
       color light_color;
 
     public:
+      double distance_factor;       /**< says how the distance affects the light intensity (distance where the intensity fades to zero) */
+
       light_3D();
       point_3D get_position();
       color get_color();
@@ -187,21 +192,25 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       vector<mesh_3D *> meshes;
       vector<light_3D *> lights;
       point_3D camera_position;
+      unsigned int shadow_rays;
+      double shadow_range;
       double focal_distance;
       color background_color;
       unsigned int resolution[2];   /**< final picture resolution */
 
-      bool cast_shadow_ray(line_3D line, light_3D light, double threshold);
+      bool cast_shadow_ray(point_3D position, light_3D light, double threshold, double range);
 
       /**<
        Cast a shadow ray to given light and checks if the point the
        ray was casted from is vidible (lit) by the light.
 
-       @param line line representing the ray
+       @param position position to cast the ray from
        @param light light to be checked
        @param threshold distance to which the intersections don't count
               so that the triangles don't cast shadows on themselves due
               to numerical errors
+       @param range how much the ray should be altered (for distributed
+              shadow computation)
        @return true if the ray hits the light without hitting any
                other object in the scene, false otherwise
        */
@@ -238,6 +247,19 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
     public:
       scene_3D(unsigned int width, unsigned int height);
 
+      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range);
+
+      /**<
+       Sets the parameters for distributed ray-casting.
+
+       @param shadow_rays number of shadow rays casted from each point,
+              casting multiple shadow rays in slightly different
+              directions and averaging them makes smooth shadows
+       @param shadow_range if multiple shadow rays are being casted
+              from each point, this parameter says how much they should
+              differ
+       */
+
       void render(t_color_buffer *buffer, void (* progress_callback)(int));
 
       /**<
@@ -251,6 +273,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        */
 
       void add_mesh(mesh_3D *mesh);
+      void set_resolution(unsigned int width, unsigned int height);
       void add_light(light_3D *light);
       void set_focal_distance(float distance);
       void set_background_color(unsigned char r, unsigned char g, unsigned char b);
@@ -279,5 +302,11 @@ double triangle_area(triangle_3D triangle);
 point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light);
 color add_colors(color color1, color color2);
 void multiply_color(color &c, double a);
+double random_double();
+  /**<
+   Returns random double in range <0,1>
+
+   @return random double in range <0,1>
+   */
 
 #endif

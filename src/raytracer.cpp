@@ -148,12 +148,23 @@ point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
     return result;
   }
 
+void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range)
+  {
+    this->shadow_rays = shadow_rays;
+    this->shadow_range = shadow_range;
+  }
+
+double random_double()
+  {
+    return ((rand() % 1000) / 1000.0);
+  }
+
 color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
   {
-    unsigned int i;
+    unsigned int i, j;
     point_3D vector_to_light, vector_to_camera, reflection_vector, helper_normal;
     color final_color, light_color;
-    double helper, intensity;
+    double helper, intensity, distance_penalty;
     int helper_color[3];
 
     helper_color[0] = surface_material.ambient_intensity * surface_material.surface_color.red;
@@ -168,33 +179,44 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
 
     for (i = 0; i < this->lights.size(); i++)
       {
-        line_3D shadow_ray(position,this->lights[i]->get_position());
+        unsigned int sum;
+        point_3D light_shifted;
 
-        if (this->cast_shadow_ray(shadow_ray,*this->lights[i],0.001))
+        sum = this->cast_shadow_ray(position,*this->lights[i],ERROR_OFFSET,0.0) ? 1 : 0; // main shadow ray
+
+        for (j = 1; j < this->shadow_rays; j++) // additional shadow rays
+          sum += this->cast_shadow_ray(position,*this->lights[i],ERROR_OFFSET,this->shadow_range) ? 1 : 0;
+
+        if (sum != 0)  // at least one shadow ray hit the light
           {
-          intensity = this->lights[i]->get_intensity();
+            double shadow_ratio;    // how much shadow the point is in, 0.0 = full shadow, 1.0 = no shadow
+            shadow_ratio = sum / ((double) this->shadow_rays);
 
-          substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
-          normalize(vector_to_light);
+            distance_penalty = 1.0 - point_distance(position,this->lights[i]->get_position()) / this->lights[i]->distance_factor;
+            distance_penalty = distance_penalty < 0 ? 0 : pow(distance_penalty,0.25);
+            intensity = this->lights[i]->get_intensity() * distance_penalty * shadow_ratio;
 
-          helper = -1 * dot_product(vector_to_light,surface_normal);
-          helper = helper < 0 ? 0 : helper;
+            substract_vectors(this->lights[i]->get_position(),position,vector_to_light);
+            normalize(vector_to_light);
 
-          // add diffuse part:
-          helper_color[0] += intensity * surface_material.surface_color.red * surface_material.diffuse_intensity * helper;
-          helper_color[1] += intensity * surface_material.surface_color.green * surface_material.diffuse_intensity * helper;
-          helper_color[2] += intensity * surface_material.surface_color.blue * surface_material.diffuse_intensity * helper;
+            helper = -1 * dot_product(vector_to_light,surface_normal);
+            helper = helper < 0 ? 0 : helper;
 
-          // add specular part:
-          reflection_vector = make_reflection_vector(surface_normal,vector_to_light);
-          helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
-          helper = helper < 0 ? 0 : helper;
-          light_color = this->lights[i]->get_color();
+            // add diffuse part:
+            helper_color[0] += intensity * surface_material.surface_color.red * surface_material.diffuse_intensity * helper;
+            helper_color[1] += intensity * surface_material.surface_color.green * surface_material.diffuse_intensity * helper;
+            helper_color[2] += intensity * surface_material.surface_color.blue * surface_material.diffuse_intensity * helper;
 
-          helper_color[0] += intensity * surface_material.specular_intensity * helper * light_color.red;
-          helper_color[1] += intensity * surface_material.specular_intensity * helper * light_color.green;
-          helper_color[2] += intensity * surface_material.specular_intensity * helper * light_color.blue;
-        }
+            // add specular part:
+            reflection_vector = make_reflection_vector(surface_normal,vector_to_light);
+            helper = pow(dot_product(reflection_vector,vector_to_camera),surface_material.specular_exponent);
+            helper = helper < 0 ? 0 : helper;
+            light_color = this->lights[i]->get_color();
+
+            helper_color[0] += intensity * surface_material.specular_intensity * helper * light_color.red;
+            helper_color[1] += intensity * surface_material.specular_intensity * helper * light_color.green;
+            helper_color[2] += intensity * surface_material.specular_intensity * helper * light_color.blue;
+          }
       }
 
     final_color.red = saturate_int(helper_color[0],0,255);
@@ -202,6 +224,12 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     final_color.blue = saturate_int(helper_color[2],0,255);
 
     return final_color;
+  }
+
+void scene_3D::set_resolution(unsigned int width, unsigned int height)
+  {
+    this->resolution[0] = width;
+    this->resolution[1] = height;
   }
 
 void mesh_3D::translate(double x, double y, double z)
@@ -316,6 +344,8 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->background_color.red = 255;
     this->background_color.green = 255;
     this->background_color.blue = 255;
+    this->shadow_rays = 1;
+    this->shadow_range = 0.1;
   }
 
 void scene_3D::set_background_color(unsigned char r, unsigned char g, unsigned char b)
@@ -641,14 +671,20 @@ color multiply_colors(color color1, color color2)
     return final_color;
   }
 
-bool scene_3D::cast_shadow_ray(line_3D line, light_3D light, double threshold)
+bool scene_3D::cast_shadow_ray(point_3D position, light_3D light, double threshold, double range)
   {
     unsigned int i, j;
     triangle_3D triangle;
     double a,b,c,t,distance;
     point_3D intersection,line_origin;
+    point_3D light_position;
+    light_position = light.get_position();
 
-    line.get_point(0,line_origin);
+    light_position.x += random_double() * range;
+    light_position.y += random_double() * range;
+    light_position.z += random_double() * range;
+
+    line_3D line(position,light_position);
 
     for (i = 0; i < this->meshes.size(); i++)
       {
@@ -664,7 +700,7 @@ bool scene_3D::cast_shadow_ray(line_3D line, light_3D light, double threshold)
             if (line.intersects_triangle(triangle,a,b,c,t))
               {
                 line.get_point(t,intersection);
-                distance = point_distance(line_origin,intersection);
+                distance = point_distance(position,intersection);
 
                 if (distance > threshold)
                   {
@@ -782,7 +818,7 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                             line_3D reflection_line(intersection,helper_point);
 
 
-                            add_color = cast_ray(reflection_line,0.01,recursion_depth - 1);
+                            add_color = cast_ray(reflection_line,ERROR_OFFSET,recursion_depth - 1);
 
                             multiply_color(add_color,mat.reflection);
                             final_color = add_colors(final_color,add_color);
@@ -842,7 +878,7 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
 
             line_3D line(point1,point2);
 
-            ray_color = this->cast_ray(line,0.01,1);
+            ray_color = this->cast_ray(line,ERROR_OFFSET,1);
 
             color_buffer_set_pixel(buffer,i,j,ray_color.red,ray_color.green,ray_color.blue);
           }
@@ -1040,4 +1076,7 @@ light_3D::light_3D()
     this->light_color.green = 255;
     this->light_color.blue = 255;
     this->light_color.alpha = 255;
+    this->distance_factor = 20;
   }
+
+
