@@ -166,8 +166,8 @@ double random_double()
 color scene_3D::compute_lighting(point_3D position, material surface_material, point_3D surface_normal)
   {
     unsigned int i, j;
-    point_3D vector_to_light, vector_to_camera, reflection_vector, position2;
-    color final_color, light_color, glitter_color;
+    point_3D vector_to_light, vector_to_camera, reflection_vector;
+    color final_color, light_color;
     double helper, intensity, distance_penalty;
     int helper_color[3];
 
@@ -225,21 +225,6 @@ color scene_3D::compute_lighting(point_3D position, material surface_material, p
     final_color.red = saturate_int(helper_color[0],0,255);
     final_color.green = saturate_int(helper_color[1],0,255);
     final_color.blue = saturate_int(helper_color[2],0,255);
-
-    if (surface_material.glitter > 0)
-      {
-        position2.x = position.x + surface_normal.x + (random_double() * 0.5) - 0.25;
-        position2.y = position.y + surface_normal.y + (random_double() * 0.5) - 0.25;
-        position2.z = position.z + surface_normal.z + (random_double() * 0.5) - 0.25;
-
-        line_3D glitter_ray(position,position2);
-
-        glitter_color = cast_ray(glitter_ray,ERROR_OFFSET,1);
-
-        final_color.red = saturate_int(final_color.red + surface_material.glitter * glitter_color.red,0,255);
-        final_color.green = saturate_int(final_color.green + surface_material.glitter * glitter_color.green,0,255);
-        final_color.blue = saturate_int(final_color.blue + surface_material.glitter * glitter_color.blue,0,255);
-      }
 
     return final_color;
   }
@@ -733,6 +718,18 @@ bool scene_3D::cast_shadow_ray(point_3D position, light_3D light, double thresho
     return true;
   }
 
+point_3D line_3D::get_vector_to_origin()
+  {
+    point_3D a,b,result;
+
+    this->get_point(0,a);
+    this->get_point(1,b);
+    substract_vectors(b,a,result);
+
+    normalize(result);
+    return result;
+  }
+
 color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_depth)
   {
     unsigned int k, l;
@@ -743,7 +740,7 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
     double barycentric_a, barycentric_b, barycentric_c;
     point_3D starting_point;
     point_3D normal,normal_a,normal_b,normal_c;
-    point_3D reflection_vector, vector_to_camera;
+    point_3D reflection_vector, incoming_vector_reverse;
     material mat;
 
     line.get_point(0,starting_point);
@@ -816,16 +813,34 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
 
                     if (recursion_depth != 0)
                       {
-                        vector_to_camera.x = -1 * intersection.x;
-                        vector_to_camera.y = -1 * intersection.y;
-                        vector_to_camera.z = -1 * intersection.z;
-
-                        normalize(vector_to_camera);
+                        incoming_vector_reverse = line.get_vector_to_origin();
 
                         if (mat.reflection > 0)
                           {
                             point_3D helper_point;
-                            reflection_vector = make_reflection_vector(normal,vector_to_camera);
+                            reflection_vector = make_reflection_vector(normal,incoming_vector_reverse);
+
+                            reflection_vector.x *= -1;
+                            reflection_vector.y *= -1;
+                            reflection_vector.z *= -1;
+
+                            helper_point.x = intersection.x + reflection_vector.x;
+                            helper_point.y = intersection.y + reflection_vector.y;
+                            helper_point.z = intersection.z + reflection_vector.z;
+
+                            line_3D reflection_line(intersection,helper_point);
+
+
+                            add_color = cast_ray(reflection_line,ERROR_OFFSET,recursion_depth - 1);
+
+                            multiply_color(add_color,mat.reflection);
+                            final_color = add_colors(final_color,add_color);
+                          }
+
+                        if (mat.transparency > 0)
+                          {
+                            point_3D helper_point;
+                            reflection_vector = make_reflection_vector(normal,incoming_vector_reverse);
 
                             reflection_vector.x *= -1;
                             reflection_vector.y *= -1;

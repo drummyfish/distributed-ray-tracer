@@ -163,6 +163,16 @@ class line_3D
           @param point in this variable the line point will be returned
          */
 
+      point_3D get_vector_to_origin();
+
+        /**<
+          Gets a vector that's parallel with the line and points towards
+          it's origin.
+
+          @return normalized vector that's parallel with the line and
+                  points towards it's origin
+         */
+
       bool intersects_triangle(triangle_3D triangle, double &a, double &b, double &c, double &t);
 
         /**<

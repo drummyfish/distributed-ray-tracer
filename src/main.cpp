@@ -47,6 +47,7 @@ int main(void)
     cup.mat.specular_intensity = 0.9;
     cup.mat.specular_exponent = 50;
     //cup.mat.glitter = 0.5;
+    cup.mat.transparency = 0.5;
     cup.scale(1.25,1.25,1.25);
     cup.rotate(-1.4,AROUND_X);
     cup.rotate(0.1,AROUND_Y);
