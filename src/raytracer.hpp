@@ -52,7 +52,7 @@ typedef struct
 typedef struct         /**< vertex used by 3D object */
   {
     point_3D position;
-    double texture_coords[2];
+    double texture_coords[3];
     point_3D normal;
   } vertex_3D;
 
@@ -102,13 +102,48 @@ class light_3D                      /**< light in 3D */
       void set_position(double x, double y, double z);
   };
 
+class texture_3D                    /**< 3D texture */
+  {
+    protected:
+      double wrap_coordinate(double coord);
+
+    public:
+      virtual color get_color(double x, double y, double z) = 0;
+
+      /**<
+       Gets a sample of the texture at given coordinates.
+
+       @param x x coordination of the sample
+       @param y y coordination of the sample
+       @param z z coordination of the sample
+       @return color at given position in the texture, the texture space
+               fits in a unit cube, i.e. x, y and z are in <0,1>,
+               however for x, y and z outside this range wrapping will
+               be used so any numerical value can be used
+       */
+  };
+
+class texture_3D_checkers: public texture_3D
+  {
+    protected:
+      color color1;
+      color color2;
+      unsigned int repeat;
+
+    public:
+      texture_3D_checkers(color color1, color color2, unsigned int repeat);
+      virtual color get_color(double x, double y, double z);
+  };
+
 class mesh_3D                       /**< 3D object made of triangles */
   {
     protected:
       t_color_buffer *texture;
+      texture_3D *tex_3D;
 
     public:
       material mat;
+      bool use_3D_texture;          /**< says if 3D or 2D texture should be used */
       point_3D bounding_sphere_center;
       double bounding_sphere_radius;
 
@@ -120,6 +155,8 @@ class mesh_3D                       /**< 3D object made of triangles */
       void update_bounding_sphere();
       void set_texture(t_color_buffer *texture);
       t_color_buffer *get_texture();
+      void set_texture_3D(texture_3D *texture);
+      texture_3D *get_texture_3D();
       bool load_obj(string filename);
       void translate(double x, double y, double z);
       void rotate(double angle, rotation_type type);

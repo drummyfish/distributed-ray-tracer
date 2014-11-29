@@ -38,32 +38,48 @@ int main(void)
     light2.set_intensity(0.4);
     light2.distance_factor = 50;
 
+    color c1, c2;
+
+    c1.red = 255;
+    c1.green = 0;
+    c1.blue = 0;
+    c2.red = 0;
+    c2.green = 255;
+    c2.blue = 0;
+
+    texture_3D_checkers checkers(c1,c2,1);
+
     cup.load_obj("cup2.obj");
-    cup.mat.surface_color.red = 255;
-    cup.mat.surface_color.green = 0;
-    cup.mat.surface_color.blue = 100;
     cup.mat.ambient_intensity = 0.2;
-    cup.mat.diffuse_intensity = 0.4;
-    cup.mat.specular_intensity = 0.9;
+    cup.mat.diffuse_intensity = 0.6;
+    cup.mat.specular_intensity = 0.7;
     cup.mat.specular_exponent = 50;
     //cup.mat.glitter = 0.5;
-    cup.mat.transparency = 0.5;
+    //cup.mat.transparency = 0.5;
     cup.scale(1.25,1.25,1.25);
     cup.rotate(-1.4,AROUND_X);
     cup.rotate(0.1,AROUND_Y);
     cup.translate(2,18,3);
+    cup.use_3D_texture = true;
+    cup.set_texture_3D(&checkers);
+
 
     floor.load_obj("plane.obj");
     floor.scale(3,3,3);
     floor.rotate(-PI / 2.0,AROUND_X);
     floor.translate(0,0,-5);
     floor.translate(-1,19,2);
-    floor.set_texture(&texture);
+ //   floor.set_texture(&texture);
 
     mirror.load_obj("plane.obj");
     mirror.scale(3,1,1);
     mirror.translate(-1,27,5);
     mirror.mat.reflection = 0.4;
+
+    mirror.mat.ambient_intensity = 0.2;
+    mirror.mat.diffuse_intensity = 0.5;
+    mirror.mat.specular_intensity = 0.8;
+
 
     scene.add_mesh(&cup);
     scene.add_mesh(&floor);
@@ -92,6 +108,7 @@ int main(void)
       );
 */
     scene.render(&buffer,print_progress);
+
     color_buffer_save_to_png(&buffer,"picture.png");
 
     return 0;

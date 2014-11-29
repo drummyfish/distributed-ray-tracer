@@ -26,10 +26,11 @@ bool line_3D::intersects_sphere(point_3D center, double radius)
 mesh_3D::mesh_3D()
   {
     this->texture = 0;
-
-    this->mat.surface_color.red = 200;
-    this->mat.surface_color.green = 200;
-    this->mat.surface_color.blue = 200;
+    this->tex_3D = 0;
+    this->use_3D_texture = false;
+    this->mat.surface_color.red = 255;
+    this->mat.surface_color.green = 255;
+    this->mat.surface_color.blue = 255;
     this->mat.surface_color.alpha = 255;
     this->mat.ambient_intensity = 0.3;
     this->mat.diffuse_intensity = 0.9;
@@ -42,6 +43,52 @@ mesh_3D::mesh_3D()
     this->bounding_sphere_center.x = 0;
     this->bounding_sphere_center.y = 0;
     this->bounding_sphere_center.z = 0;
+  }
+
+void mesh_3D::set_texture_3D(texture_3D *texture)
+  {
+    this->tex_3D = texture;
+  }
+
+texture_3D *mesh_3D::get_texture_3D()
+  {
+    return this->tex_3D;
+  }
+
+double texture_3D::wrap_coordinate(double coord)
+  {
+    while (coord < 0.0)
+      coord += 1.0;
+
+    while (coord > 1.0)
+      coord -= 1.0;
+
+    return coord;
+  }
+
+texture_3D_checkers::texture_3D_checkers(color color1, color color2, unsigned int repeat)
+  {
+    this->color1 = color1;
+    this->color2 = color2;
+    this->repeat = repeat;
+  }
+
+color texture_3D_checkers::get_color(double x, double y, double z)
+  {
+    unsigned int tile_x, tile_y, tile_z;
+    bool x_odd, y_odd, z_odd;
+
+    tile_x = floor(2 * x * this->repeat);
+    tile_y = floor(2 * y * this->repeat);
+    tile_z = floor(2 * z * this->repeat);
+
+    x_odd = tile_x % 2 != 0;
+    y_odd = tile_y % 2 != 0;
+    z_odd = tile_z % 2 != 0;
+
+    return (x_odd == y_odd) ? this->color1 : this->color2;
+
+    //return ((x_odd == y_odd) && z_odd) || ((x_odd != y_odd) && !z_odd) ? this->color1 : this->color2;
   }
 
 void mesh_3D::update_bounding_sphere()
@@ -547,7 +594,7 @@ bool mesh_3D::load_obj(string filename)
 
                   helper_point.x = obj_line_data[0][0];
                   helper_point.y = obj_line_data[1][0];
-                  helper_point.z = 0;
+                  helper_point.z = obj_line_data[2][0];
 
                   texture_vertices.push_back(helper_point);
                   break;
@@ -608,6 +655,7 @@ bool mesh_3D::load_obj(string filename)
 
                   this->vertices[indices[i]].texture_coords[0] = texture_vertices[vt_index].x;
                   this->vertices[indices[i]].texture_coords[1] = texture_vertices[vt_index].y;
+                  this->vertices[indices[i]].texture_coords[2] = texture_vertices[vt_index].z;
 
                   if (vn_index >= (int) normals.size() || vn_index < 0)
                     continue;
@@ -791,7 +839,7 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                     normal.z = barycentric_a * normal_a.z + barycentric_b * normal_b.z + barycentric_c * normal_c.z;
                     normalize(normal);  // interpolation breaks normalization
 
-                    if (this->meshes[k]->get_texture() != 0)
+                    if (!this->meshes[k]->use_3D_texture && this->meshes[k]->get_texture() != 0)        // 2d texture
                       {
                         double u,v;
 
@@ -800,7 +848,11 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
 
                         color_buffer_get_pixel(this->meshes[k]->get_texture(),u * this->meshes[k]->get_texture()->width,v * this->meshes[k]->get_texture()->height,&final_color.red,&final_color.green,&final_color.blue);
                       }
-                    else
+                    else if (this->meshes[k]->use_3D_texture && this->meshes[k]->get_texture_3D() != 0) // 3d texture
+                      {
+                        final_color = this->meshes[k]->get_texture_3D()->get_color(intersection.x,intersection.y,intersection.z);
+                      }
+                    else                                                                                // mesh color
                       {
                         final_color.red = 255;
                         final_color.green = 255;
@@ -913,6 +965,7 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
             point2.z = -1 * aspect_ratio * (j / ((double) this->resolution[1]) - 0.5);
 
             line_3D line(point1,point2);
+
             ray_color = this->cast_ray(line,ERROR_OFFSET,1); // main ray
 
             if (this->depth_of_field_rays != 1)

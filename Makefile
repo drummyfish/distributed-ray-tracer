@@ -8,7 +8,7 @@ CFLAGS2=-std=c++11 -Wall -pedantic -O3
 SOURCEDIR=src
 
 all: main.o colorbuffer.o lodepng.o raytracer.o
-	$(CC2) $(CFLAGS2) -lm -o program.exe main.o colorbuffer.o lodepng.o obj.o obj_parser.o raytracer.o
+	$(CC2) $(CFLAGS2) -lm -o program.exe main.o colorbuffer.o lodepng.o raytracer.o
 
 main.o: $(SOURCEDIR)/main.cpp
 	$(CC2) $(CFLAGS2) -c -o main.o $(SOURCEDIR)/main.cpp
