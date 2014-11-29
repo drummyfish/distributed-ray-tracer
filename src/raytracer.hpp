@@ -129,9 +129,25 @@ class texture_3D_checkers: public texture_3D
       color color1;
       color color2;
       unsigned int repeat;
+      bool use_x;
+      bool use_y;
+      bool use_z;
 
     public:
-      texture_3D_checkers(color color1, color color2, unsigned int repeat);
+      texture_3D_checkers(color color1, color color2, unsigned int repeat, bool use_x, bool use_y, bool use_z);
+
+      /**<
+       Class constructor, initialises new object.
+
+       @param color1 color one of the checkers pattern
+       @param color2 color two of the checkers pattern
+       @param repeat how many times the pattern should be repeated in
+              the interval <0,1>
+       @param use_x whether x (u) coordinate will affect the pattern
+       @param use_y whether y (v) coordinate will affect the pattern
+       @param use_z whether z (w) coordinate will affect the pattern
+       */
+
       virtual color get_color(double x, double y, double z);
   };
 

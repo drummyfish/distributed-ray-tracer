@@ -47,7 +47,7 @@ int main(void)
     c2.green = 255;
     c2.blue = 0;
 
-    texture_3D_checkers checkers(c1,c2,1);
+    texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
     cup.load_obj("cup2.obj");
     cup.mat.ambient_intensity = 0.2;

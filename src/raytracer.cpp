@@ -66,17 +66,20 @@ double texture_3D::wrap_coordinate(double coord)
     return coord;
   }
 
-texture_3D_checkers::texture_3D_checkers(color color1, color color2, unsigned int repeat)
+texture_3D_checkers::texture_3D_checkers(color color1, color color2, unsigned int repeat, bool use_x, bool use_y, bool use_z)
   {
     this->color1 = color1;
     this->color2 = color2;
     this->repeat = repeat;
+    this->use_x = use_x;
+    this->use_y = use_y;
+    this->use_z = use_z;
   }
 
 color texture_3D_checkers::get_color(double x, double y, double z)
   {
     unsigned int tile_x, tile_y, tile_z;
-    bool x_odd, y_odd, z_odd;
+    bool return_color1, x_odd, y_odd, z_odd;
 
     tile_x = floor(2 * x * this->repeat);
     tile_y = floor(2 * y * this->repeat);
@@ -86,9 +89,18 @@ color texture_3D_checkers::get_color(double x, double y, double z)
     y_odd = tile_y % 2 != 0;
     z_odd = tile_z % 2 != 0;
 
-    return (x_odd == y_odd) ? this->color1 : this->color2;
+    return_color1 = true;
 
-    //return ((x_odd == y_odd) && z_odd) || ((x_odd != y_odd) && !z_odd) ? this->color1 : this->color2;
+    if (this->use_x)
+      return_color1 = x_odd ? return_color1 : !return_color1;
+
+    if (this->use_y)
+      return_color1 = y_odd ? return_color1 : !return_color1;
+
+    if (this->use_z)
+      return_color1 = z_odd ? return_color1 : !return_color1;
+
+    return return_color1 ? this->color1 : this->color2;
   }
 
 void mesh_3D::update_bounding_sphere()
