@@ -369,12 +369,14 @@ double vector_length(point_3D vector);
 void normalize(point_3D &vector);
 double dot_product(point_3D vector1, point_3D vector2);
 void rotate_point(point_3D &point, double angle, rotation_type type);
+void rotate_point_axis(point_3D &point, double angle, point_3D axis);
 double string_to_double(string what, size_t *end_position);
   /**<
    Implementation of strtod because it can't be used because
    of a MinGW bug.
    */
 void parse_obj_line(string line,float data[4][3]);
+void multiply_quaternions(double q1[4], double q2[4], double dest[4]);
 color multiply_colors(color color1, color color2);
 void cross_product(point_3D vector1, point_3D vector2, point_3D &final_vector);
 double vectors_angle(point_3D vector1, point_3D vector2);

@@ -208,6 +208,45 @@ point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
     return result;
   }
 
+void multiply_quaternions(double q1[4], double q2[4], double dest[4])
+  {
+    dest[0] = q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3];
+    dest[1] = q1[0] * q2[1] + q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2];
+    dest[2] = q1[0] * q2[2] - q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1];
+    dest[3] = q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0];
+  }
+
+void rotate_point_axis(point_3D &point, double angle, point_3D axis)
+  {
+    double q1[4], q2[4], q3[4], q4[4];    // quaternions
+    double cos_angle, sin_angle;
+
+    q1[0] = 0;
+    q1[1] = point.x;
+    q1[2] = point.y;
+    q1[3] = point.z;
+
+    cos_angle = cos(angle / 2.0);
+    sin_angle = sin(angle / 2.0);
+
+    q2[0] = cos_angle;
+    q2[1] = axis.x * sin_angle;
+    q2[2] = axis.y * sin_angle;
+    q2[3] = axis.z * sin_angle;
+
+    multiply_quaternions(q2,q1,q3);
+
+    q2[1] *= -1;
+    q2[2] *= -1;
+    q2[3] *= -1;
+
+    multiply_quaternions(q3,q2,q4);
+
+    point.x = q4[1];
+    point.y = q4[2];
+    point.z = q4[3];
+  }
+
 void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance)
   {
     if (shadow_rays == 0)

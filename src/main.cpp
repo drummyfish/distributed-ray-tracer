@@ -63,7 +63,6 @@ int main(void)
     cup.use_3D_texture = true;
     cup.set_texture_3D(&checkers);
 
-
     floor.load_obj("plane.obj");
     floor.scale(3,3,3);
     floor.rotate(-PI / 2.0,AROUND_X);
@@ -79,7 +78,6 @@ int main(void)
     mirror.mat.ambient_intensity = 0.2;
     mirror.mat.diffuse_intensity = 0.5;
     mirror.mat.specular_intensity = 0.8;
-
 
     scene.add_mesh(&cup);
     scene.add_mesh(&floor);
@@ -102,8 +100,8 @@ int main(void)
     scene.set_distribution_parameters(
       1,     // shadow rays
       0.5,   // shadow range
-      10,    // reflection rays
-      0.05,  // reflection range
+      1,     // reflection rays
+      0,     // reflection range
       1,     // DOF rays
       0,     // lens width
       0      // focus distance
