@@ -98,15 +98,17 @@ int main(void)
     scene.camera_rotate(0.5,AROUND_X);
     scene.set_background_color(255,200,100);
 */
-/*
+
     scene.set_distribution_parameters(
-      4,     // shadow rays
+      1,     // shadow rays
       0.5,   // shadow range
-      30,    // DOF rays
-      5.0,   // lens width
-      50     // focus distance
+      10,    // reflection rays
+      0.05,  // reflection range
+      1,     // DOF rays
+      0,     // lens width
+      0      // focus distance
       );
-*/
+
     scene.render(&buffer,print_progress);
 
     color_buffer_save_to_png(&buffer,"picture.png");

@@ -208,9 +208,20 @@ point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
     return result;
   }
 
-void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance)
+void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance)
   {
+    if (shadow_rays == 0)
+      shadow_rays = 1;
+
+    if (depth_of_field_rays == 0)
+      depth_of_field_rays = 1;
+
+    if (reflection_rays == 0)
+      reflection_rays = 1;
+
     this->shadow_rays = shadow_rays;
+    this->reflection_range = reflection_range;
+    this->reflection_rays = reflection_rays;
     this->shadow_range = shadow_range;
     this->depth_of_field_rays = depth_of_field_rays;
     this->lens_width = lens_width;
@@ -790,9 +801,17 @@ point_3D line_3D::get_vector_to_origin()
     return result;
   }
 
+void alter_vector(point_3D &what, double range)
+  {
+    what.x += (random_double() * 2 - 1) * range;
+    what.y += (random_double() * 2 - 1) * range;
+    what.z += (random_double() * 2 - 1) * range;
+    normalize(what);
+  }
+
 color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_depth)
   {
-    unsigned int k, l;
+    unsigned int k, l, m;
     triangle_3D triangle;
     color final_color, helper_color, add_color;
     double depth, t;
@@ -802,6 +821,7 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
     point_3D normal,normal_a,normal_b,normal_c;
     point_3D reflection_vector, incoming_vector_reverse;
     material mat;
+    int color_sum[3];
 
     line.get_point(0,starting_point);
 
@@ -881,21 +901,38 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
 
                         if (mat.reflection > 0)
                           {
-                            point_3D helper_point;
-                            reflection_vector = make_reflection_vector(normal,incoming_vector_reverse);
+                            color_sum[0] = 0;
+                            color_sum[1] = 0;
+                            color_sum[2] = 0;
 
-                            reflection_vector.x *= -1;
-                            reflection_vector.y *= -1;
-                            reflection_vector.z *= -1;
+                            for (m = 0; m < this->reflection_rays; m++)
+                              {
+                                point_3D helper_point;
+                                reflection_vector = make_reflection_vector(normal,incoming_vector_reverse);
 
-                            helper_point.x = intersection.x + reflection_vector.x;
-                            helper_point.y = intersection.y + reflection_vector.y;
-                            helper_point.z = intersection.z + reflection_vector.z;
+                                reflection_vector.x *= -1;
+                                reflection_vector.y *= -1;
+                                reflection_vector.z *= -1;
 
-                            line_3D reflection_line(intersection,helper_point);
+                                if (m > 0) // alter the ray slightly
+                                  alter_vector(reflection_vector,this->reflection_range);
 
+                                helper_point.x = intersection.x + reflection_vector.x;
+                                helper_point.y = intersection.y + reflection_vector.y;
+                                helper_point.z = intersection.z + reflection_vector.z;
 
-                            add_color = cast_ray(reflection_line,ERROR_OFFSET,recursion_depth - 1);
+                                line_3D reflection_line(intersection,helper_point);
+
+                                add_color = cast_ray(reflection_line,ERROR_OFFSET,recursion_depth - 1);
+
+                                color_sum[0] += add_color.red;
+                                color_sum[1] += add_color.green;
+                                color_sum[2] += add_color.blue;
+                              }
+
+                            add_color.red = color_sum[0] / this->reflection_rays;
+                            add_color.green = color_sum[1] / this->reflection_rays;
+                            add_color.blue = color_sum[2] / this->reflection_rays;
 
                             multiply_color(add_color,mat.reflection);
                             final_color = add_colors(final_color,add_color);

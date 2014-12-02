@@ -257,6 +257,8 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       vector<light_3D *> lights;
       point_3D camera_position;
       unsigned int shadow_rays;
+      unsigned int reflection_rays;
+      double reflection_range;
       double shadow_range;
       unsigned int depth_of_field_rays;
       double lens_width;
@@ -314,7 +316,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
     public:
       scene_3D(unsigned int width, unsigned int height);
 
-      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance);
+      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance);
 
       /**<
        Sets the parameters for distributed ray-casting.
@@ -325,6 +327,10 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        @param shadow_range if multiple shadow rays are being casted
               from each point, this parameter says how much they should
               differ
+       @param reflection_rays number of rays casted from the surface of
+              materials with reflection
+       @param reflection_range sets the range within which the
+              reflection rays will be generated
        @param depth_of_field_rays number of rays casted for each pixel
               to achieve dept of field effect, 1 means no depth of
               field
@@ -376,6 +382,15 @@ double triangle_area(triangle_3D triangle);
 point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light);
 color add_colors(color color1, color color2);
 void multiply_color(color &c, double a);
+void alter_vector(point_3D &what, double range);
+  /**<
+   Randomly alters given vector.
+
+   @param what vector to be altered, it will be also normalized, it
+          should also be normalized before this function is called
+   @param range range that affects how much the vector will be altered
+   */
+
 double random_double();
   /**<
    Returns random double in range <0,1>
