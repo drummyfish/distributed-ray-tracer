@@ -257,6 +257,7 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       vector<light_3D *> lights;
       point_3D camera_position;
       unsigned int shadow_rays;
+      unsigned int recursion_depth;
       unsigned int reflection_rays;
       double reflection_range;
       double shadow_range;
@@ -283,6 +284,8 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        @return true if the ray hits the light without hitting any
                other object in the scene, false otherwise
        */
+
+      void set_recursion_depth(unsigned int depth);
 
       color compute_lighting(point_3D position, material surface_material, point_3D surface_normal);
 
@@ -384,6 +387,7 @@ double triangle_area(triangle_3D triangle);
 point_3D make_reflection_vector(point_3D normal, point_3D incoming_vector_reverse);
 point_3D make_refraction_vector(point_3D normal, point_3D incoming_vector_reverse, double refraction_index);
 color add_colors(color color1, color color2);
+color interpolate_colors(color color1, color color2, double ratio);
 void multiply_color(color &c, double a);
 void alter_vector(point_3D &what, double range);
   /**<

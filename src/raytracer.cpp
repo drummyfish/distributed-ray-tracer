@@ -523,6 +523,8 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->depth_of_field_rays = 1;
     this->focus_distance = 10;
     this->lens_width = 2.0;
+    this->recursion_depth = 3;
+    this->reflection_rays = 1;
   }
 
 void scene_3D::set_background_color(unsigned char r, unsigned char g, unsigned char b)
@@ -1001,7 +1003,7 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                       {
                         incoming_vector_reverse = line.get_vector_to_origin();
 
-                        if (mat.reflection > 0)
+                        if (mat.reflection > 0)                         // reflection
                           {
                             color_sum[0] = 0;
                             color_sum[1] = 0;
@@ -1036,30 +1038,26 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                             add_color.green = color_sum[1] / this->reflection_rays;
                             add_color.blue = color_sum[2] / this->reflection_rays;
 
-                            multiply_color(add_color,mat.reflection);
-                            final_color = add_colors(final_color,add_color);
+                          //  multiply_color(add_color,mat.reflection);
+                          //  final_color = add_colors(final_color,add_color);
+                            final_color = interpolate_colors(final_color,add_color,mat.reflection);
                           }
 
-                        if (mat.transparency > 0)
+                        if (mat.transparency > 0)                       // refraction
                           {
                             point_3D helper_point;
-                            reflection_vector = make_reflection_vector(normal,incoming_vector_reverse);
+                            point_3D refraction_vector;
+                            refraction_vector = make_refraction_vector(normal,incoming_vector_reverse,mat.refractive_index);
 
-                            reflection_vector.x *= -1;
-                            reflection_vector.y *= -1;
-                            reflection_vector.z *= -1;
+                            helper_point.x = intersection.x + refraction_vector.x;
+                            helper_point.y = intersection.y + refraction_vector.y;
+                            helper_point.z = intersection.z + refraction_vector.z;
 
-                            helper_point.x = intersection.x + reflection_vector.x;
-                            helper_point.y = intersection.y + reflection_vector.y;
-                            helper_point.z = intersection.z + reflection_vector.z;
+                            line_3D refraction_line(intersection,helper_point);
 
-                            line_3D reflection_line(intersection,helper_point);
+                            add_color = cast_ray(refraction_line,ERROR_OFFSET,recursion_depth - 1);
 
-
-                            add_color = cast_ray(reflection_line,ERROR_OFFSET,recursion_depth - 1);
-
-                            multiply_color(add_color,mat.reflection);
-                            final_color = add_colors(final_color,add_color);
+                            final_color = interpolate_colors(final_color,add_color,mat.transparency);
                           }
                       }
                   }
@@ -1068,6 +1066,18 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
             }
 
     return final_color;
+  }
+
+color interpolate_colors(color color1, color color2, double ratio)
+  {
+    double ratio_inverse = 1 - ratio;
+    color result;
+
+    result.red = ratio_inverse * color1.red + ratio * color2.red;
+    result.green = ratio_inverse * color1.green + ratio * color2.green;
+    result.blue = ratio_inverse * color1.blue + ratio * color2.blue;
+
+    return result;
   }
 
 color add_colors(color color1, color color2)
@@ -1086,6 +1096,11 @@ void multiply_color(color &c, double a)
     c.red = saturate_int(c.red * a,0,255);
     c.green = saturate_int(c.green * a,0,255);
     c.blue = saturate_int(c.blue * a,0,255);
+  }
+
+void scene_3D::set_recursion_depth(unsigned int depth)
+  {
+    this->recursion_depth = depth;
   }
 
 void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
@@ -1117,7 +1132,7 @@ void scene_3D::render(t_color_buffer *buffer, void (* progress_callback)(int))
 
             line_3D line(point1,point2);
 
-            ray_color = this->cast_ray(line,ERROR_OFFSET,1); // main ray
+            ray_color = this->cast_ray(line,ERROR_OFFSET,this->recursion_depth); // main ray
 
             if (this->depth_of_field_rays != 1)
               {
