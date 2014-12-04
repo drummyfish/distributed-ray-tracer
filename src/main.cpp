@@ -98,10 +98,10 @@ int main(void)
 */
 
     scene.set_distribution_parameters(
-      1,     // shadow rays
+      10,    // shadow rays
       0.5,   // shadow range
-      1,     // reflection rays
-      0,     // reflection range
+      10,     // reflection rays
+      0.01,     // reflection range
       1,     // DOF rays
       0,     // lens width
       0      // focus distance

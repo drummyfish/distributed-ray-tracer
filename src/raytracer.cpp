@@ -190,20 +190,75 @@ double dot_product(point_3D vector1, point_3D vector2)
     return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
   }
 
-point_3D make_reflection_vector(point_3D normal, point_3D vector_to_light)
+point_3D make_reflection_vector(point_3D normal, point_3D incoming_vector_reverse)
   {
     double helper;
     point_3D result;
 
     normalize(normal);
-    normalize(vector_to_light);
+    normalize(incoming_vector_reverse);
 
-    helper = 2 * dot_product(vector_to_light,normal);
+    helper = 2 * dot_product(incoming_vector_reverse,normal);
     normal.x = helper * normal.x;
     normal.y = helper * normal.y;
     normal.z = helper * normal.z;
-    substract_vectors(normal,vector_to_light,result);
+    substract_vectors(normal,incoming_vector_reverse,result);
     normalize(result);
+
+    return result;
+  }
+
+
+point_3D make_refraction_vector(point_3D normal, point_3D incoming_vector_reverse, double refraction_index)
+  {
+    // we suppose that the other refraction index is 1 (air)
+    bool comes_from_air;
+    double angle, angle2, angle_difference, rotate_angle;
+    point_3D rotation_axis;
+    point_3D result;
+
+    angle = vectors_angle(normal,incoming_vector_reverse);
+
+    if (angle < 0.00001 || angle > PI - 0.0001)  // if this was 0 or PI, then the cross product would fail
+      {
+        result.x = -1 * incoming_vector_reverse.x;
+        result.y = -1 * incoming_vector_reverse.y;
+        result.z = -1 * incoming_vector_reverse.z;
+        return result;
+      }
+
+    comes_from_air = angle < PI / 2.0;
+
+    if (!comes_from_air)
+      angle = PI - angle;       // angle against reverted normal
+
+    angle2 = asin(sin(angle) / refraction_index);
+    angle_difference = angle - angle2;
+    angle_difference = angle_difference < 0 ? -1 * angle_difference : angle_difference;
+
+    cross_product(normal,incoming_vector_reverse,rotation_axis);
+
+    rotate_angle = comes_from_air ? PI + angle_difference : PI - angle_difference;
+
+    result = incoming_vector_reverse;
+
+    if (comes_from_air)
+      rotate_angle *= -1;
+
+    rotate_point_axis(result,rotate_angle,rotation_axis);
+
+    normalize(result);
+
+    if (!comes_from_air)  // check for total reflection
+      {
+        angle = vectors_angle(normal,result);
+
+        if (angle > PI / 2.0)
+          {
+            angle_difference = angle - PI / 2.0;
+            rotate_point_axis(result,angle_difference,rotation_axis);  // rotate the vector back
+          }
+      }
 
     return result;
   }
@@ -220,6 +275,14 @@ void rotate_point_axis(point_3D &point, double angle, point_3D axis)
   {
     double q1[4], q2[4], q3[4], q4[4];    // quaternions
     double cos_angle, sin_angle;
+
+    if (angle < 0)
+      {
+        angle *= -1;
+        axis.x *= -1;
+        axis.y *= -1;
+        axis.z *= -1;
+      }
 
     q1[0] = 0;
     q1[1] = point.x;
