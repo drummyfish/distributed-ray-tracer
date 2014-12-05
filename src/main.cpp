@@ -39,7 +39,6 @@ int main(void)
     light2.distance_factor = 50;
 
     color c1, c2;
-
     c1.red = 255;
     c1.green = 0;
     c1.blue = 0;
@@ -49,23 +48,22 @@ int main(void)
 
     texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
-    cup.load_obj("cube.obj");
+    cup.load_obj("cup2.obj");
     cup.mat.ambient_intensity = 0.2;
     cup.mat.diffuse_intensity = 0.6;
     cup.mat.specular_intensity = 0.7;
     cup.mat.specular_exponent = 50;
     //cup.mat.glitter = 0.5;
- //   cup.mat.transparency = 0.9;
+    cup.mat.transparency = 0.8;
  //   cup.mat.refractive_index = 1.2;
-  //  cup.scale(1.25,1.25,1.25);
+    cup.scale(1.25,1.25,1.25);
 
-    cup.mat.reflection = 0.7;
-    cup.scale(5,5,5);
+ //   cup.mat.reflection = 0.7;
     cup.rotate(-1.4,AROUND_X);
     cup.rotate(0.1,AROUND_Y);
-    cup.translate(2,18,3);
-    cup.use_3D_texture = true;
-    cup.set_texture_3D(&checkers);
+    cup.translate(3,13,5);
+  //  cup.use_3D_texture = true;
+  //  cup.set_texture_3D(&checkers);
 
     floor.load_obj("plane.obj");
     floor.scale(3,3,3);
@@ -103,17 +101,20 @@ int main(void)
     scene.set_background_color(255,200,100);
 */
 
-/*
+    scene.set_recursion_depth(5);
+
     scene.set_distribution_parameters(
-      10,    // shadow rays
+      1,    // shadow rays
       0.5,   // shadow range
-      10,     // reflection rays
+      1,    // reflection rays
       0.01,     // reflection range
       1,     // DOF rays
       0,     // lens width
-      0      // focus distance
+      0,      // focus distance
+      3,     // refraction rays
+      0.1    // refraction range
       );
-*/
+
 
     scene.render(&buffer,print_progress);
 

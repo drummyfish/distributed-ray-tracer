@@ -310,7 +310,9 @@ void rotate_point_axis(point_3D &point, double angle, point_3D axis)
     point.z = q4[3];
   }
 
-void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance)
+void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shadow_range,
+        unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays,
+        double lens_width, double focus_distance, unsigned int refraction_rays, double refraction_range)
   {
     if (shadow_rays == 0)
       shadow_rays = 1;
@@ -328,6 +330,8 @@ void scene_3D::set_distribution_parameters(unsigned int shadow_rays, double shad
     this->depth_of_field_rays = depth_of_field_rays;
     this->lens_width = lens_width;
     this->focus_distance = focus_distance;
+    this->refraction_rays = refraction_rays;
+    this->refraction_range = refraction_range;
   }
 
 double random_double()
@@ -525,6 +529,8 @@ scene_3D::scene_3D(unsigned int width, unsigned int height)
     this->lens_width = 2.0;
     this->recursion_depth = 3;
     this->reflection_rays = 1;
+    this->refraction_rays = 1;
+    this->refraction_range = 0.1;
   }
 
 void scene_3D::set_background_color(unsigned char r, unsigned char g, unsigned char b)
@@ -1038,26 +1044,43 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                             add_color.green = color_sum[1] / this->reflection_rays;
                             add_color.blue = color_sum[2] / this->reflection_rays;
 
-                          //  multiply_color(add_color,mat.reflection);
-                          //  final_color = add_colors(final_color,add_color);
                             final_color = interpolate_colors(final_color,add_color,mat.reflection);
                           }
 
                         if (mat.transparency > 0)                       // refraction
                           {
-                            point_3D helper_point;
-                            point_3D refraction_vector;
-                            refraction_vector = make_refraction_vector(normal,incoming_vector_reverse,mat.refractive_index);
+                            color_sum[0] = 0;
+                            color_sum[1] = 0;
+                            color_sum[2] = 0;
 
-                            helper_point.x = intersection.x + refraction_vector.x;
-                            helper_point.y = intersection.y + refraction_vector.y;
-                            helper_point.z = intersection.z + refraction_vector.z;
+                            for (m = 0; m < this->refraction_rays; m++)
+                              {
+                                point_3D helper_point;
+                                point_3D refraction_vector;
+                                refraction_vector = make_refraction_vector(normal,incoming_vector_reverse,mat.refractive_index);
 
-                            line_3D refraction_line(intersection,helper_point);
+                                helper_point.x = intersection.x + refraction_vector.x;
+                                helper_point.y = intersection.y + refraction_vector.y;
+                                helper_point.z = intersection.z + refraction_vector.z;
 
-                            add_color = cast_ray(refraction_line,ERROR_OFFSET,recursion_depth - 1);
+                                if (m > 0) // alter the ray slightly
+                                  alter_vector(refraction_vector,this->refraction_range);
+
+                                line_3D refraction_line(intersection,helper_point);
+
+                                add_color = cast_ray(refraction_line,ERROR_OFFSET,recursion_depth - 1);
+
+                                color_sum[0] += add_color.red;
+                                color_sum[1] += add_color.green;
+                                color_sum[2] += add_color.blue;
+                              }
+
+                            add_color.red = color_sum[0] / this->refraction_rays;
+                            add_color.green = color_sum[1] / this->refraction_rays;
+                            add_color.blue = color_sum[2] / this->refraction_rays;
 
                             final_color = interpolate_colors(final_color,add_color,mat.transparency);
+
                           }
                       }
                   }

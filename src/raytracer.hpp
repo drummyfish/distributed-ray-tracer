@@ -259,7 +259,9 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
       unsigned int shadow_rays;
       unsigned int recursion_depth;
       unsigned int reflection_rays;
+      unsigned int refraction_rays;
       double reflection_range;
+      double refraction_range;
       double shadow_range;
       unsigned int depth_of_field_rays;
       double lens_width;
@@ -284,8 +286,6 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
        @return true if the ray hits the light without hitting any
                other object in the scene, false otherwise
        */
-
-      void set_recursion_depth(unsigned int depth);
 
       color compute_lighting(point_3D position, material surface_material, point_3D surface_normal);
 
@@ -319,7 +319,11 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
     public:
       scene_3D(unsigned int width, unsigned int height);
 
-      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range, unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays, double lens_width, double focus_distance);
+      void set_recursion_depth(unsigned int depth);
+
+      void set_distribution_parameters(unsigned int shadow_rays, double shadow_range,
+        unsigned int reflection_rays, double reflection_range, unsigned int depth_of_field_rays,
+        double lens_width, double focus_distance, unsigned int refraction_rays, double refraction_range);
 
       /**<
        Sets the parameters for distributed ray-casting.
@@ -341,6 +345,10 @@ class scene_3D         /**< 3D scene with 3D objects, lights and rendering info 
               is enabled
        @param focus_distance distance at which objects will be sharp
               when depth of field is enabled
+       @param refraction_rays how many refraction rays will be cast for
+              transparent materials
+       @param refraction_range reflection_range sets the range within
+              which the refraction rays will be generated
        */
 
       void render(t_color_buffer *buffer, void (* progress_callback)(int));
