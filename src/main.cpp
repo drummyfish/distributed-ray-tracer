@@ -28,7 +28,7 @@ int main(void)
     mesh_3D cup, floor, mirror;
     light_3D light, light2;
 
-    color_buffer_load_from_png(&texture,"floor.png");
+    color_buffer_load_from_png(&texture,"compcube.png");
 
     light.set_position(-6,-4,3);
     light.set_intensity(0.7);
@@ -48,18 +48,22 @@ int main(void)
 
     texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
-    cup.load_obj("cup2.obj");
+
+    cup.load_obj("compcube.obj");
+
     cup.mat.ambient_intensity = 0.2;
     cup.mat.diffuse_intensity = 0.6;
     cup.mat.specular_intensity = 0.7;
     cup.mat.specular_exponent = 50;
     //cup.mat.glitter = 0.5;
-    cup.mat.transparency = 0.8;
+  //  cup.mat.transparency = 0.8;
  //   cup.mat.refractive_index = 1.2;
-    cup.scale(1.25,1.25,1.25);
+    cup.scale(0.8,0.8,0.8);
+
+    cup.set_texture(&texture);
 
  //   cup.mat.reflection = 0.7;
-    cup.rotate(-1.4,AROUND_X);
+    cup.rotate(0,AROUND_X);
     cup.rotate(0.1,AROUND_Y);
     cup.translate(3,13,5);
   //  cup.use_3D_texture = true;
@@ -102,7 +106,7 @@ int main(void)
 */
 
     scene.set_recursion_depth(5);
-
+/*
     scene.set_distribution_parameters(
       1,    // shadow rays
       0.5,   // shadow range
@@ -114,7 +118,7 @@ int main(void)
       3,     // refraction rays
       0.1    // refraction range
       );
-
+*/
 
     scene.render(&buffer,print_progress);
 

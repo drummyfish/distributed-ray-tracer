@@ -735,7 +735,6 @@ bool mesh_3D::load_obj(string filename)
               else                       // position vertex
                 {
                   parse_obj_line(line,obj_line_data);
-
                   vertex_3D vertex;
 
                   vertex.position.x = obj_line_data[0][0];
@@ -749,7 +748,6 @@ bool mesh_3D::load_obj(string filename)
 
             case 'f':
               unsigned int indices[4],i,faces;
-
               parse_obj_line(line,obj_line_data);
 
               for (i = 0; i < 4; i++)     // triangle indices
@@ -783,7 +781,7 @@ bool mesh_3D::load_obj(string filename)
                   vt_index = floor(obj_line_data[i][1]) - 1;
                   vn_index = floor(obj_line_data[i][2]) - 1;
 
-                  if (indices[i] >= (int) this->vertices.size() || vt_index >= (int) texture_vertices.size())
+                  if (indices[i] >= (int) this->vertices.size() || vt_index >= (int) texture_vertices.size() || vt_index < 0)
                     continue;
 
                   this->vertices[indices[i]].texture_coords[0] = texture_vertices[vt_index].x;
@@ -797,7 +795,6 @@ bool mesh_3D::load_obj(string filename)
                   this->vertices[indices[i]].normal.y = normals[vn_index].y;
                   this->vertices[indices[i]].normal.z = normals[vn_index].z;
                 }
-
               break;
 
             default:
