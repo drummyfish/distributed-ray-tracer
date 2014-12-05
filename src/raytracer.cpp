@@ -999,7 +999,6 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                       }
 
                     helper_color = compute_lighting(intersection,mat,normal);
-
                     final_color = multiply_colors(helper_color,final_color);
 
                     if (recursion_depth != 0)
