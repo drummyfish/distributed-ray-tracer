@@ -24,7 +24,7 @@ void print_progress(int line)
 void render_scene_1()
   {
     t_color_buffer buffer,cube_texture,floor_texture;
-    scene_3D scene(1024,768);
+    scene_3D scene(640,480);
     mesh_3D cube, floor, cup, sphere;
     light_3D light, light2;
 
@@ -50,8 +50,8 @@ void render_scene_1()
     texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
     sphere.load_obj("sphere.obj");
-    sphere.scale(0.35,0.35,0.35);
-    sphere.translate(8.5,17,11.5);
+    sphere.scale(0.9,0.9,0.9);
+    sphere.translate(8.5,24,8);
     sphere.mat.reflection = 0.5;
 
     cup.load_obj("cup.obj");
@@ -98,7 +98,6 @@ void render_scene_1()
     scene.set_background_color(255,200,100);
 
     scene.set_focal_distance(0.4);
-
 /*
     scene.set_recursion_depth(5);
 
@@ -118,8 +117,93 @@ void render_scene_1()
     color_buffer_save_to_png(&buffer,"scene1.png");
   }
 
+void render_scene_2()
+  {
+    t_color_buffer buffer,floor_texture;
+    scene_3D scene(640,480);
+    mesh_3D floor, cup, wall, mirror;
+    light_3D light, light2;
+
+    color_buffer_load_from_png(&floor_texture,"floor.png");
+
+    light.set_position(-50,-10,5);
+    light.set_intensity(1.0);
+    light.distance_factor = 200;
+
+    light2.set_position(-50,20,3);
+    light2.set_intensity(1.0);
+    light2.distance_factor = 150;
+
+    cup.load_obj("cup.obj");
+    cup.rotate(- PI / 2.0,AROUND_X);
+    cup.rotate(-0.6,AROUND_Y);
+    cup.rotate(-0.3,AROUND_Z);
+    cup.scale(1.5,1.5,1.5);
+    cup.translate(20,14.5,5);
+    cup.mat.surface_color.red = 100;
+    cup.mat.surface_color.green = 100;
+    cup.mat.surface_color.blue = 0;
+    cup.mat.diffuse_intensity = 0.8;
+    cup.mat.specular_intensity = 0.7;
+    cup.mat.specular_exponent = 5;
+
+    floor.load_obj("plane.obj");
+    floor.scale(10,10,10);
+    floor.rotate(-PI / 2.0,AROUND_X);
+    floor.translate(0,0,-5);
+    floor.translate(-1,19,2);
+    floor.set_texture(&floor_texture);
+    floor.mat.ambient_intensity = 0.2;
+
+    wall.load_obj("plane.obj");
+    wall.scale(10,10,10);
+    wall.translate(0,20,-5);
+    wall.translate(-1,19,2);
+    wall.set_texture(&floor_texture);
+    wall.mat.ambient_intensity = 0.2;
+
+    mirror.load_obj("plane.obj");
+    mirror.scale(2,2,2);
+    mirror.mat.reflection = 0.7;
+    mirror.rotate(-PI / 2.0,AROUND_Z);
+    mirror.translate(-10,19,2);
+    mirror.mat.ambient_intensity = 0.2;
+
+    scene.add_mesh(&cup);
+    scene.add_mesh(&floor);
+    scene.add_mesh(&wall);
+    scene.add_mesh(&mirror);
+    scene.add_light(&light2);
+    scene.add_light(&light);
+
+    scene.camera_translate(40,25,10);
+    scene.camera_rotate(-1.6,AROUND_Z);
+    scene.camera_rotate(0.2,AROUND_X);
+    scene.set_background_color(50,10,10);
+
+    scene.set_focal_distance(0.6);
+
+    scene.set_recursion_depth(4);
+
+    scene.set_distribution_parameters(
+      1,     // shadow rays
+      0.5,   // shadow range
+      1,     // reflection rays
+      0.01,  // reflection range
+      100,   // DOF rays
+      1,     // lens width
+      30,    // focus distance
+      3,     // refraction rays
+      0.1    // refraction range
+      );
+
+    scene.render(&buffer,print_progress);
+    color_buffer_save_to_png(&buffer,"scene2.png");
+  }
+
+
 int main(void)
   {
-    render_scene_1();
+    render_scene_2();
     return 0;
   }

@@ -1,8 +1,8 @@
 # Procedural texture generator project
 # Miloslav Ciz, 2012
 
-CC=gcc
-CC2=c++
+CC=gcc -Wno-write-strings
+CC2=c++ -Wno-write-strings
 CFLAGS=-std=c99 -g -pedantic -Wall -Wextra -O3
 CFLAGS2=-std=c++11 -Wall -pedantic -O3
 SOURCEDIR=src

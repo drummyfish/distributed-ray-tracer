@@ -781,7 +781,7 @@ bool mesh_3D::load_obj(string filename)
                   vt_index = floor(obj_line_data[i][1]) - 1;
                   vn_index = floor(obj_line_data[i][2]) - 1;
 
-                  if (indices[i] >= (int) this->vertices.size() || vt_index >= (int) texture_vertices.size() || vt_index < 0)
+                  if (indices[i] >= this->vertices.size() || vt_index >= (int) texture_vertices.size() || vt_index < 0)
                     continue;
 
                   this->vertices[indices[i]].texture_coords[0] = texture_vertices[vt_index].x;
