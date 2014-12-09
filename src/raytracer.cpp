@@ -1055,15 +1055,14 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                                 point_3D refraction_vector;
                                 refraction_vector = make_refraction_vector(normal,incoming_vector_reverse,mat.refractive_index);
 
+                                if (m > 0) // alter the ray slightly
+                                  alter_vector(refraction_vector,this->refraction_range);
+
                                 helper_point.x = intersection.x + refraction_vector.x;
                                 helper_point.y = intersection.y + refraction_vector.y;
                                 helper_point.z = intersection.z + refraction_vector.z;
 
-                                if (m > 0) // alter the ray slightly
-                                  alter_vector(refraction_vector,this->refraction_range);
-
                                 line_3D refraction_line(intersection,helper_point);
-
                                 add_color = cast_ray(refraction_line,ERROR_OFFSET,recursion_depth - 1);
 
                                 color_sum[0] += add_color.red;
@@ -1076,7 +1075,6 @@ color scene_3D::cast_ray(line_3D line, double threshold, unsigned int recursion_
                             add_color.blue = color_sum[2] / this->refraction_rays;
 
                             final_color = interpolate_colors(final_color,add_color,mat.transparency);
-
                           }
                       }
                   }
