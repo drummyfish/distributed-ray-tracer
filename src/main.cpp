@@ -14,6 +14,9 @@
 #include <fstream>
 #include "raytracer.hpp"
 
+#define RESOURCE_PATH "resources/"
+#define RESULT_PATH "results/"
+
 unsigned int width;
 unsigned int height;
 
@@ -39,8 +42,8 @@ void render_scene_1(unsigned int n)
     mesh_3D cube, floor, cup, sphere;
     light_3D light, light2;
 
-    color_buffer_load_from_png(&cube_texture,"compcube.png");
-    color_buffer_load_from_png(&floor_texture,"floor.png");
+    color_buffer_load_from_png(&cube_texture,RESOURCE_PATH "compcube.png");
+    color_buffer_load_from_png(&floor_texture,RESOURCE_PATH "floor.png");
 
     light.set_position(-6,-4,3);
     light.set_intensity(0.7);
@@ -60,14 +63,14 @@ void render_scene_1(unsigned int n)
 
     texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
-    sphere.load_obj("sphere.obj");
+    sphere.load_obj(RESOURCE_PATH "sphere.obj");
     sphere.scale(0.9,0.9,0.9);
     sphere.translate(8.5,24,8);
     sphere.mat.reflection = 0.5;
     sphere.mat.specular_exponent = 50;
     sphere.mat.specular_intensity = 1.0;
 
-    cup.load_obj("cup.obj");
+    cup.load_obj(RESOURCE_PATH "cup.obj");
     cup.rotate(- PI / 2.0,AROUND_X);
     cup.scale(1.5,1.5,1.5);
     cup.translate(15,14.5,5);
@@ -78,7 +81,7 @@ void render_scene_1(unsigned int n)
     cup.mat.specular_intensity = 0.9;
     cup.mat.specular_exponent = 1;
 
-    cube.load_obj("compcube.obj");
+    cube.load_obj(RESOURCE_PATH "compcube.obj");
     cube.mat.ambient_intensity = 0.4;
     cube.mat.diffuse_intensity = 0.6;
     cube.mat.specular_intensity = 0.5;
@@ -90,7 +93,7 @@ void render_scene_1(unsigned int n)
     cube.rotate(PI + PI / 2.0,AROUND_Z);
     cube.translate(3,13,5);
 
-    floor.load_obj("plane.obj");
+    floor.load_obj(RESOURCE_PATH "plane.obj");
     floor.scale(10,10,10);
     floor.rotate(-PI / 2.0,AROUND_X);
     floor.translate(0,0,-5);
@@ -116,11 +119,11 @@ void render_scene_1(unsigned int n)
 
     switch (n)
       {
-        case 0: rays = 1; range = 0; filename = "scene1_0.png"; info = "hard shadows"; break;
-        case 1: rays = 3; range = 0.2; filename = "scene1_1.png"; info = "soft shadows, few lines, small range"; break;
-        case 2: rays = 15; range = 0.2; filename = "scene1_2.png"; info = "soft shadows, many lines, small range"; break;
-        case 3: rays = 3; range = 1.2; filename = "scene1_3.png"; info = "soft shadows, few lines, high range"; break;
-        default: n = 4; rays = 15; range = 1.2; filename = "scene1_4.png"; info = "soft shadows, many lines, high range"; break;
+        case 0: rays = 1; range = 0; filename = RESULT_PATH "scene1_0.png"; info = "hard shadows"; break;
+        case 1: rays = 3; range = 0.2; filename = RESULT_PATH "scene1_1.png"; info = "soft shadows, few lines, small range"; break;
+        case 2: rays = 15; range = 0.2; filename = RESULT_PATH "scene1_2.png"; info = "soft shadows, many lines, small range"; break;
+        case 3: rays = 3; range = 1.2; filename = RESULT_PATH "scene1_3.png"; info = "soft shadows, few lines, high range"; break;
+        default: n = 4; rays = 15; range = 1.2; filename = RESULT_PATH "scene1_4.png"; info = "soft shadows, many lines, high range"; break;
       }
 
     scene.set_distribution_parameters(
@@ -163,9 +166,9 @@ void render_scene_2(unsigned int n)
     mesh_3D floor, cup, wall, mirror, pyramid;
     light_3D light, light2;
 
-    color_buffer_load_from_png(&floor_texture,"floor.png");
-    color_buffer_load_from_png(&wall_texture,"wall.png");
-    color_buffer_load_from_png(&pyramid_texture,"pyramid.png");
+    color_buffer_load_from_png(&floor_texture,RESOURCE_PATH "floor.png");
+    color_buffer_load_from_png(&wall_texture,RESOURCE_PATH "wall.png");
+    color_buffer_load_from_png(&pyramid_texture,RESOURCE_PATH "pyramid.png");
 
     light.set_position(-50,-10,5);
     light.set_intensity(1.0);
@@ -175,7 +178,7 @@ void render_scene_2(unsigned int n)
     light2.set_intensity(1.0);
     light2.distance_factor = 150;
 
-    cup.load_obj("cup.obj");
+    cup.load_obj(RESOURCE_PATH "cup.obj");
     cup.rotate(- PI / 2.0,AROUND_X);
     cup.rotate(-0.6,AROUND_Y);
     cup.rotate(-0.3,AROUND_Z);
@@ -188,13 +191,13 @@ void render_scene_2(unsigned int n)
     cup.mat.specular_intensity = 0.7;
     cup.mat.specular_exponent = 5;
 
-    pyramid.load_obj("pyramid.obj");
+    pyramid.load_obj(RESOURCE_PATH "pyramid.obj");
     pyramid.rotate(0.4,AROUND_Z);
     pyramid.translate(5,30,0);
     pyramid.set_texture(&pyramid_texture);
     pyramid.mat.diffuse_intensity = 0.9;
 
-    floor.load_obj("plane.obj");
+    floor.load_obj(RESOURCE_PATH "plane.obj");
     floor.scale(10,10,10);
     floor.rotate(-PI / 2.0,AROUND_X);
     floor.translate(0,0,-5);
@@ -202,14 +205,14 @@ void render_scene_2(unsigned int n)
     floor.set_texture(&floor_texture);
     floor.mat.ambient_intensity = 0.2;
 
-    wall.load_obj("plane.obj");
+    wall.load_obj(RESOURCE_PATH "plane.obj");
     wall.scale(10,10,10);
     wall.translate(0,20,-5);
     wall.translate(-1,19,2);
     wall.set_texture(&wall_texture);
     wall.mat.ambient_intensity = 0.2;
 
-    mirror.load_obj("plane.obj");
+    mirror.load_obj(RESOURCE_PATH "plane.obj");
     mirror.scale(2,2,1);
     mirror.mat.reflection = 0.7;
     mirror.rotate(-PI / 2.0,AROUND_Z);
@@ -239,15 +242,15 @@ void render_scene_2(unsigned int n)
 
     switch (n)
       {
-        case 0: reflection_rays = 1; reflection_range = 0.7; dof_rays = 1; distance = 0; lens_width = 1.0; filename = "scene2_0.png"; info = "non-distributed raytracing"; break;
-        case 1: reflection_rays = 30; reflection_range = 0.2; dof_rays = 1; distance = 0; lens_width = 1.0; filename = "scene2_1.png"; info = "distributed reflection, small range"; break;
-        case 2: reflection_rays = 30; reflection_range = 0.05; dof_rays = 1; distance = 0; lens_width = 1.0; filename = "scene2_2.png"; info = "distributed reflection, high range"; break;
-        case 3: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 20; lens_width = 1.5; filename = "scene2_3.png"; info = "depth of field distance 1"; break;
-        case 4: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 1.5; filename = "scene2_4.png"; info = "depth of field distance 2"; break;
-        case 5: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 40; lens_width = 1.5; filename = "scene2_5.png"; info = "depth of field distance 3"; break;
-        case 6: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 50; lens_width = 1.5; filename = "scene2_6.png"; info = "depth of field distance 4"; break;
-        case 7: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 2.3; filename = "scene2_7.png"; info = "depth of field distance 2, lens width 2"; break;
-        default: n = 8; reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 3.0; filename = "scene2_8.png"; info = "depth of field distance 3, lens width 3"; break;
+        case 0: reflection_rays = 1; reflection_range = 0.7; dof_rays = 1; distance = 0; lens_width = 1.0; filename = RESULT_PATH "scene2_0.png"; info = "non-distributed raytracing"; break;
+        case 1: reflection_rays = 30; reflection_range = 0.05; dof_rays = 1; distance = 0; lens_width = 1.0; filename = RESULT_PATH "scene2_1.png"; info = "distributed reflection, small range"; break;
+        case 2: reflection_rays = 30; reflection_range = 0.2; dof_rays = 1; distance = 0; lens_width = 1.0; filename = RESULT_PATH "scene2_2.png"; info = "distributed reflection, high range"; break;
+        case 3: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 20; lens_width = 1.5; filename = RESULT_PATH "scene2_3.png"; info = "depth of field distance 1"; break;
+        case 4: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 1.5; filename = RESULT_PATH "scene2_4.png"; info = "depth of field distance 2"; break;
+        case 5: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 40; lens_width = 1.5; filename = RESULT_PATH "scene2_5.png"; info = "depth of field distance 3"; break;
+        case 6: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 50; lens_width = 1.5; filename = RESULT_PATH "scene2_6.png"; info = "depth of field distance 4"; break;
+        case 7: reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 2.3; filename = RESULT_PATH "scene2_7.png"; info = "depth of field distance 2, lens width 2"; break;
+        default: n = 8; reflection_rays = 1; reflection_range = 0; dof_rays = 30; distance = 30; lens_width = 3.0; filename = RESULT_PATH "scene2_8.png"; info = "depth of field distance 3, lens width 3"; break;
       }
 
     scene.set_distribution_parameters(
@@ -286,7 +289,7 @@ void render_scene_3(unsigned int n)
     mesh_3D cube, floor, cup, sphere;
     light_3D light, light2;
 
-    color_buffer_load_from_png(&floor_texture,"floor.png");
+    color_buffer_load_from_png(&floor_texture,RESOURCE_PATH "floor.png");
 
     light.set_position(-3,2,30);
     light.set_intensity(0.8);
@@ -306,7 +309,7 @@ void render_scene_3(unsigned int n)
 
     texture_3D_checkers checkers(c1,c2,1,true,true,false);
 
-    sphere.load_obj("sphere.obj");
+    sphere.load_obj(RESOURCE_PATH "sphere.obj");
     sphere.scale(1.0,1.0,1.0);
     sphere.translate(12,24,11);
     sphere.mat.surface_color.red = 0;
@@ -316,7 +319,7 @@ void render_scene_3(unsigned int n)
     sphere.mat.specular_exponent = 50;
     sphere.mat.specular_intensity = 1.0;
 
-    cup.load_obj("cup.obj");
+    cup.load_obj(RESOURCE_PATH "cup.obj");
     cup.rotate(- PI / 2.0,AROUND_X);
     cup.scale(5,5,5);
     cup.translate(-1,40,15);
@@ -328,7 +331,7 @@ void render_scene_3(unsigned int n)
     cup.mat.surface_color.blue = 0;
     cup.mat.specular_exponent = 100;
 
-    cube.load_obj("cube.obj");
+    cube.load_obj(RESOURCE_PATH "cube.obj");
     cube.mat.ambient_intensity = 0.4;
     cube.mat.diffuse_intensity = 0.6;
     cube.mat.specular_intensity = 0.5;
@@ -343,7 +346,7 @@ void render_scene_3(unsigned int n)
     cube.rotate(PI + PI / 2.0,AROUND_Z);
     cube.translate(3,13,5);
 
-    floor.load_obj("plane.obj");
+    floor.load_obj(RESOURCE_PATH "plane.obj");
     floor.scale(10,10,10);
     floor.rotate(-PI / 2.0,AROUND_X);
     floor.translate(0,0,-5);
@@ -372,11 +375,11 @@ void render_scene_3(unsigned int n)
 
     switch (n)
       {
-        case 0: rays = 1; range = 0; filename = "scene3_0.png"; info = "perfect refraction"; break;
-        case 1: rays = 3; range = 0.02; filename = "scene3_1.png"; info = "distributed refraction, few rays, small range"; break;
-        case 2: rays = 7; range = 0.08; filename = "scene3_2.png"; info = "distributed refraction, many rays, small range"; break;
-        case 3: rays = 3; range = 0.02; filename = "scene3_3.png"; info = "distributed refraction, few rays, high range"; break;
-        default: n = 4; rays = 7; range = 0.08; filename = "scene1_4.png"; info = "distributed refraction, many rays, high range"; break;
+        case 0: rays = 1; range = 0; filename = RESULT_PATH "scene3_0.png"; info = "perfect refraction"; break;
+        case 1: rays = 3; range = 0.02; filename = RESULT_PATH "scene3_1.png"; info = "distributed refraction, few rays, small range"; break;
+        case 2: rays = 7; range = 0.02; filename = RESULT_PATH "scene3_2.png"; info = "distributed refraction, many rays, small range"; break;
+        case 3: rays = 3; range = 0.08; filename = RESULT_PATH "scene3_3.png"; info = "distributed refraction, few rays, high range"; break;
+        default: n = 4; rays = 7; range = 0.08; filename = RESULT_PATH "scene1_4.png"; info = "distributed refraction, many rays, high range"; break;
       }
 
     scene.set_distribution_parameters(

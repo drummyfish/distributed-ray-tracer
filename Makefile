@@ -1,23 +1,24 @@
-# Procedural texture generator project
-# Miloslav Ciz, 2012
+CXX=c++
+CXXFLAGS=-pedantic -Wall -std=c++11 -g -O2 -MMD -Wno-write-strings
 
-CC=gcc -Wno-write-strings
-CC2=c++ -Wno-write-strings
-CFLAGS=-std=c99 -g -pedantic -Wall -Wextra -O3
-CFLAGS2=-std=c++11 -Wall -pedantic -O3
-SOURCEDIR=src
+SRCDIR=src
+OBJFILES=$(SRCDIR)/main.o $(SRCDIR)/colorbuffer.o $(SRCDIR)/lodepng.o $(SRCDIR)/raytracer.o
 
-all: main.o colorbuffer.o lodepng.o raytracer.o
-	$(CC2) $(CFLAGS2) -lm -o demo.exe main.o colorbuffer.o lodepng.o raytracer.o
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+BIN=demo
+else
+BIN=demo.exe
+endif
 
-main.o: $(SOURCEDIR)/main.cpp
-	$(CC2) $(CFLAGS2) -c -o main.o $(SOURCEDIR)/main.cpp
+.PHONY:all clean
 
-lodepng.o: $(SOURCEDIR)/lodepng.c $(SOURCEDIR)/lodepng.h
-	$(CC) $(CFLAGS) -c -o lodepng.o $(SOURCEDIR)/lodepng.c
+all: $(BIN) $(ANIMBIN)
 
-colorbuffer.o: $(SOURCEDIR)/colorbuffer.c $(SOURCEDIR)/colorbuffer.h $(SOURCEDIR)/lodepng.h
-	$(CC) $(CFLAGS) -c -o colorbuffer.o $(SOURCEDIR)/colorbuffer.c
+$(BIN): $(OBJFILES)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-raytracer.o: $(SOURCEDIR)/raytracer.cpp $(SOURCEDIR)/raytracer.hpp
-	$(CC2) $(CFLAGS2) -c -o raytracer.o $(SOURCEDIR)/raytracer.cpp   
+clean:
+	rm -f $(SRCDIR)/*.o $(SRCDIR)/*.d $(BIN)
+
+-include $(OBJFILES:.o=.d)
