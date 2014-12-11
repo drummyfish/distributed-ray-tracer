@@ -379,7 +379,7 @@ void render_scene_3(unsigned int n)
         case 1: rays = 3; range = 0.02; filename = RESULT_PATH "scene3_1.png"; info = "distributed refraction, few rays, small range"; break;
         case 2: rays = 7; range = 0.02; filename = RESULT_PATH "scene3_2.png"; info = "distributed refraction, many rays, small range"; break;
         case 3: rays = 3; range = 0.08; filename = RESULT_PATH "scene3_3.png"; info = "distributed refraction, few rays, high range"; break;
-        default: n = 4; rays = 7; range = 0.08; filename = RESULT_PATH "scene1_4.png"; info = "distributed refraction, many rays, high range"; break;
+        default: n = 4; rays = 7; range = 0.08; filename = RESULT_PATH "scene3_4.png"; info = "distributed refraction, many rays, high range"; break;
       }
 
     scene.set_distribution_parameters(
